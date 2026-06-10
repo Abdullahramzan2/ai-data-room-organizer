@@ -1,0 +1,49 @@
+# Data Room Organizer — default application config
+
+input:
+  recursive: true
+  # Extensions processed by the ingestion pipeline (lowercase, with dot)
+  supported_extensions:
+    - .pdf
+    - .doc
+    - .docx
+    - .xls
+    - .xlsx
+    - .ppt
+    - .pptx
+    - .jpg
+    - .jpeg
+    - .png
+    - .tif
+    - .tiff
+    - .txt
+    - .msg
+    - .eml
+
+ocr:
+  enabled: true
+  # Minimum native text chars before OCR is triggered on PDFs/images
+  min_native_text_chars: 50
+  # Tesseract language(s); install data packs as needed
+  language: eng
+  # DPI for rendering PDF pages before OCR
+  pdf_dpi: 300
+  # Path to tesseract binary (null = use system PATH)
+  tesseract_cmd: null
+
+ingestion:
+  # Max characters stored per document (downstream classification uses excerpts)
+  max_text_chars: 500000
+  # Skip files larger than this (bytes); 0 = no limit
+  max_file_size_bytes: 0
+
+legacy_office:
+  # Path to LibreOffice soffice binary (null = auto-detect on PATH or common Windows paths)
+  libreoffice_cmd: null
+  # Use Microsoft Word/PowerPoint COM automation on Windows when available
+  enable_com: true
+  # Seconds to wait for conversion subprocesses
+  conversion_timeout: 120
+
+paths:
+  taxonomy_file: taxonomy/real_estate_development.yaml

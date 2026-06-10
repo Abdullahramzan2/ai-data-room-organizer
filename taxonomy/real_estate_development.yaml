@@ -1,0 +1,310 @@
+# Real Estate Development Data Room Taxonomy
+# Swap this file (or point config at another YAML) to reuse the engine for other domains.
+# Each category: id, folder, description, keywords, optional exclude_if rules.
+
+name: real_estate_development
+version: "1.0"
+description: >
+  Default taxonomy for real estate / infrastructure development diligence data rooms.
+  Covers land control, environmental, utilities, permitting, vendors, and correspondence.
+
+categories:
+  - id: "00"
+    folder: "00_Admin_and_Index"
+    description: >
+      Master index, file manifest, classification log, review queue, duplicate report,
+      and source authentication matrix. Administrative and meta outputs for the data room.
+    keywords:
+      - manifest
+      - index
+      - classification log
+      - review queue
+      - duplicate report
+      - authentication matrix
+
+  - id: "01"
+    folder: "01_Project_Overview"
+    description: >
+      Project descriptions, executive summaries, investment summaries, site overview
+      materials, maps, high-level exhibits, marketing materials, and capital markets summaries.
+    keywords:
+      - project overview
+      - executive summary
+      - investment summary
+      - site overview
+      - marketing
+      - capital markets summary
+
+  - id: "02"
+    folder: "02_Land_Control_and_PSA"
+    description: >
+      Purchase and sale agreements, amendments, LOIs, closing conditions, deposits,
+      escrow documents, land pricing, parcel information, property cards, and acreage reconciliations.
+    keywords:
+      - PSA
+      - purchase and sale
+      - LOI
+      - land control
+      - escrow
+      - closing conditions
+      - parcel
+      - acreage
+      - property card
+
+  - id: "03"
+    folder: "03_Title_Survey_and_ALTA"
+    description: >
+      Title commitments, ALTA surveys, boundary surveys, legal descriptions, easements,
+      encumbrance schedules, access rights, road rights, utility easements, deed restrictions,
+      and mineral / brine / groundwater rights.
+    keywords:
+      - ALTA
+      - title commitment
+      - survey
+      - easement
+      - encumbrance
+      - legal description
+      - deed restriction
+      - mineral rights
+      - groundwater rights
+
+  - id: "04"
+    folder: "04_Zoning_Land_Use_and_Local_Approvals"
+    description: >
+      Zoning and land-use documentation, permitted-use confirmations, data center / BTM / BESS
+      use approvals, local AHJ correspondence, building permit pathway, site-plan approval,
+      and vested-rights documentation.
+    keywords:
+      - zoning
+      - land use
+      - permitted use
+      - AHJ
+      - site plan
+      - building permit
+      - vested rights
+      - data center use
+
+  - id: "05"
+    folder: "05_Environmental_RCRA_BRAC_FOSET"
+    description: >
+      Phase I and Phase II ESAs, RCRA documents, BRAC records, FOSET/FOST documents,
+      environmental condition reports, TCEQ records, remedy standards, army retained rights,
+      and land use control materials.
+    keywords:
+      - Phase I
+      - Phase II
+      - ESA
+      - RCRA
+      - BRAC
+      - FOSET
+      - FOST
+      - TCEQ
+      - environmental assessment
+      - land use control
+
+  - id: "06"
+    folder: "06_Wetlands_Streams_USACE"
+    description: >
+      Wetland delineations, stream maps, TXRAM materials, USACE correspondence,
+      jurisdictional determinations, Section 404/401 materials, mitigation estimates,
+      mitigation bank information, stream credits, and monitoring plans.
+    keywords:
+      - USACE
+      - Section 404
+      - Section 401
+      - TXRAM
+      - wetland
+      - stream
+      - mitigation
+      - jurisdictional determination
+      - Stantec
+
+  - id: "07"
+    folder: "07_Floodplain_Drainage_and_Stormwater"
+    description: >
+      FEMA/FIRM maps, floodplain analyses, drainage studies, stormwater plans, SWPPP
+      documents, civil drainage correspondence, and finished-floor elevation analysis.
+    keywords:
+      - FEMA
+      - FIRM
+      - floodplain
+      - drainage
+      - stormwater
+      - SWPPP
+      - finished floor elevation
+
+  - id: "08"
+    folder: "08_Geotechnical_and_Soils"
+    description: >
+      Geotechnical reports, soil surveys, boring logs, NRCS reports, foundation
+      recommendations, pavement recommendations, and groundwater observations.
+    keywords:
+      - geotechnical
+      - soils
+      - boring log
+      - NRCS
+      - foundation
+      - pavement
+      - groundwater
+
+  - id: "09"
+    folder: "09_Civil_Engineering_and_Site_Planning"
+    description: >
+      Civil engineering proposals, site plans, conceptual layouts, grading plans,
+      utility layouts, road layouts, stormwater layouts, MTG materials, LiDAR/topography,
+      and development phasing plans.
+    keywords:
+      - civil engineering
+      - site plan
+      - grading
+      - utility layout
+      - LiDAR
+      - topography
+      - phasing plan
+      - MTG
+
+  - id: "10"
+    folder: "10_Power_Utility_AEP_SWEPCO"
+    description: >
+      AEP and SWEPCO correspondence, utility load applications, load study materials,
+      interconnection materials, SPP materials, substation/switchyard materials,
+      utility cost estimates, and KRSA materials.
+    keywords:
+      - AEP
+      - SWEPCO
+      - load study
+      - interconnection
+      - SPP
+      - substation
+      - switchyard
+      - KRSA
+      - utility
+
+  - id: "11"
+    folder: "11_BTM_Generation_BESS_and_Energy"
+    description: >
+      BTM proposals, fuel cell proposals, turbine proposals, BESS materials, energy
+      services agreements, PPA/ESA/tolling documents, heat rate/performance materials,
+      BTM permitting, and energy site layouts.
+    keywords:
+      - BTM
+      - BESS
+      - fuel cell
+      - Bloom
+      - SOFC
+      - turbine
+      - PPA
+      - ESA
+      - tolling
+      - energy services
+
+  - id: "12"
+    folder: "12_Natural_Gas"
+    description: >
+      Gas supply correspondence, pipeline requests, gas volume/pressure calculations,
+      gas lateral route maps, compression/metering/regulation materials, precedent
+      agreements, and transportation agreements.
+    keywords:
+      - natural gas
+      - pipeline
+      - NGPL
+      - gas lateral
+      - compression
+      - metering
+      - transportation agreement
+      - Navitas
+      - Energy Transfer
+
+  - id: "13"
+    folder: "13_Water_and_Wastewater"
+    description: >
+      Water district materials, water supply, raw/potable water, fire flow, wastewater,
+      treatment plant documents, water line routing, capacity letters, and will-serve letters.
+    keywords:
+      - water supply
+      - wastewater
+      - treatment plant
+      - will-serve
+      - fire flow
+      - Riverbend
+      - potable water
+
+  - id: "14"
+    folder: "14_Fiber_and_Telecom"
+    description: >
+      Fiber provider materials, dark fiber, DIA/wavelength quotes, SLA terms, route
+      diversity, and meet-me-room materials.
+    keywords:
+      - fiber
+      - telecom
+      - dark fiber
+      - DIA
+      - wavelength
+      - SLA
+      - route diversity
+      - Conterra
+      - Vyve
+
+  - id: "15"
+    folder: "15_Permitting_FAST41_Federal_State"
+    description: >
+      FAST-41 materials, Permitting Council correspondence, federal permitting analysis,
+      executive order materials, TCEQ/USACE permitting, state/federal agency correspondence,
+      and permit matrix.
+    keywords:
+      - FAST-41
+      - permitting
+      - permit matrix
+      - federal agency
+      - TCEQ permit
+      - executive order
+
+  - id: "16"
+    folder: "16_Vendors_Proposals_and_Budgets"
+    description: >
+      Vendor proposals, consultant scopes, fee estimates, engineering proposals, legal
+      budgets, utility study budgets, development budgets, and capital cost estimates.
+    keywords:
+      - proposal
+      - scope of work
+      - fee estimate
+      - budget
+      - capital cost
+      - consultant
+      - vendor
+
+  - id: "17"
+    folder: "17_Capital_Markets_and_Investor_Materials"
+    description: >
+      Investment banker materials, capital partner documents, investor summaries, data room
+      responses, status summaries, source authentication matrices, and deal strategy.
+    keywords:
+      - capital markets
+      - investor
+      - Houlihan
+      - investment banker
+      - deal strategy
+      - data room response
+
+  - id: "18"
+    folder: "18_Correspondence"
+    description: >
+      Emails, letters, meeting notes, call summaries, follow-up correspondence, and
+      third-party communications. Includes scanned or exported email thread PDFs.
+    keywords:
+      - email
+      - correspondence
+      - letter
+      - meeting notes
+      - call summary
+      - From:
+      - Subject:
+      - forwarded message
+
+  - id: "19"
+    folder: "19_Unclassified_Review_Queue"
+    description: >
+      Files the system cannot confidently classify, files needing manual review,
+      conflicting or ambiguous classifications, and potential duplicates needing confirmation.
+    keywords: []
+    is_review_queue: true
