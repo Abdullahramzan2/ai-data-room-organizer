@@ -91,7 +91,40 @@ Twenty data room categories from the project specification, each with:
 
 ---
 
-### 3. Core ingestion module
+### 3. Confirmed classification approach
+
+**Decision:** Hybrid **local-first** with optional **API escalation** for ambiguous documents.
+
+| Mode | Behavior |
+|------|----------|
+| `local` | Keyword matching + local embeddings only. No API calls. Default when no API key is set. |
+| `hybrid` | Local methods first; OpenAI API only for low-confidence cases. **Recommended.** |
+| `api` | API-assisted for ambiguous cases (user opt-in). |
+
+**Three-tier pipeline:**
+
+1. **Tier 1 (local)** — Taxonomy keyword match against file name and extracted text.
+2. **Tier 2 (local)** — Sentence embeddings vs. category `description` fields.
+3. **Tier 3 (optional API)** — LLM classification using **excerpt + metadata only** — never full files.
+
+**Confidence routing:**
+
+- **High** → assign folder automatically
+- **Medium** → assign folder + flag for review
+- **Low** → `19_Unclassified_Review_Queue`
+
+**Configuration** (`.env`):
+
+```env
+CLASSIFICATION_MODE=hybrid
+OPENAI_API_KEY=
+```
+
+See `docs/ARCHITECTURE.md` §5 for full detail. Classification **implementation** is scheduled for the next development phase.
+
+---
+
+### 4. Core ingestion module
 
 **Location:** `src/dataroom/ingestion/`
 
@@ -139,7 +172,7 @@ Master Folder → Scanner → Router → Extractor → (OCR if needed) → JSON 
 
 ---
 
-### 4. Tesseract OCR integration
+### 5. Tesseract OCR integration
 
 **Location:** `src/dataroom/ocr/tesseract.py`
 
@@ -167,7 +200,7 @@ If Tesseract is not installed, ingestion continues with native text only and rec
 
 ---
 
-### 5. Legacy Office handling (`.doc` and `.ppt`)
+### 6. Legacy Office handling (`.doc` and `.ppt`)
 
 **Location:** `src/dataroom/ingestion/extractors/legacy_office.py`
 
@@ -188,7 +221,7 @@ legacy_office:
 
 ---
 
-### 6. Architecture document
+### 7. Architecture document
 
 **File:** `docs/ARCHITECTURE.md`
 
@@ -258,11 +291,13 @@ AI-Assisted Data Room File Organizer/
 
 ## Acceptance checklist
 
-| Project's requirement | Delivered |
+| Carl's requirement | Delivered |
 |--------------------|-----------|
 | Project mobilization / repo setup | Yes |
-| Taxonomy YAML with all folders (00–19) | Yes |
-| Core ingestion module for all file types | Yes |
+| Confirm workflow | Yes — scan → extract → OCR → JSON |
+| Confirm taxonomy structure | Yes — folders `00`–`19`, YAML with descriptions |
+| Confirm file-type support | Yes — all spec extensions with extractors |
+| Confirm local vs API classification | Yes — hybrid local-first + optional API (§3, ARCHITECTURE §5) |
 | Tesseract OCR integration | Yes |
 | Architecture document | Yes |
 
@@ -273,3 +308,4 @@ AI-Assisted Data Room File Organizer/
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | June 2026 | Initial Milestone 1 deliverables document |
+| 1.1 | June 2026 | Added confirmed classification approach; updated acceptance checklist |

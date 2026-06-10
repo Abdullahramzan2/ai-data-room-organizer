@@ -15,7 +15,7 @@
 
 This document describes the technical architecture delivered in Milestone 1: a **local document ingestion system** that accepts a master folder of mixed project files, extracts text and metadata (including OCR for scanned documents), and produces structured JSON output.
 
-The system also includes a **config-driven taxonomy YAML** (folders `00`–`19`) ready for AI-guided classification, and a command-line interface for running ingestion.
+The system also includes a **config-driven taxonomy YAML** (folders `00`–`19`) ready for AI-guided classification, a **confirmed hybrid local-first classification approach** (§5), and a command-line interface for running ingestion.
 
 Design principles align with the full project vision: originals untouched, domain-flexible taxonomy, local-first processing, no silent failures, and audit-friendly outputs.
 
@@ -163,7 +163,94 @@ Category `description` fields are written for AI classification. `keywords` supp
 
 ---
 
-## 5. Application configuration
+## 5. Confirmed classification approach
+
+Milestone 1 confirms the classification strategy for the data room organizer. **Implementation follows in the next development phase**; this section records the agreed design.
+
+### Decision: hybrid local-first with optional API escalation
+
+| Mode | Description | Default |
+|------|-------------|---------|
+| **`local`** | Keyword matching + local embeddings only. No external API calls. | Yes (when `OPENAI_API_KEY` is unset) |
+| **`hybrid`** | Local methods first; API used only for ambiguous documents. | **Recommended** |
+| **`api`** | API-assisted for all low/medium-confidence cases (user opt-in). | No |
+
+Set via `.env`:
+
+```env
+CLASSIFICATION_MODE=hybrid
+OPENAI_API_KEY=          # required only for hybrid/api modes
+```
+
+### Three-tier classification pipeline
+
+```mermaid
+flowchart TD
+    DOC[Extracted document] --> T1[Tier 1: Keyword / taxonomy match]
+    T1 -->|High confidence| DONE[Assign primary folder]
+    T1 -->|Low confidence| T2[Tier 2: Local embeddings]
+    T2 -->|High confidence| DONE
+    T2 -->|Low confidence| T3{API enabled?}
+    T3 -->|Yes| T3A[Tier 3: LLM API escalation]
+    T3 -->|No| REV[19_Unclassified_Review_Queue]
+    T3A -->|Confident| DONE
+    T3A -->|Uncertain| REV
+```
+
+**Tier 1 — Keyword / taxonomy match (local)**
+
+- Match file name, extracted text, and keywords from taxonomy YAML.
+- Apply `exclude_if` rules where defined.
+- Fast, no model inference. Suitable for obvious matches.
+
+**Tier 2 — Local embeddings (local)**
+
+- Compare document excerpt against taxonomy category `description` fields using sentence embeddings (e.g. sentence-transformers).
+- Runs entirely on the host machine.
+- Primary semantic signal: category **description** (supports Carl's domain-flexible taxonomy requirement).
+
+**Tier 3 — LLM API escalation (optional)**
+
+- Invoked only when Tier 1 and Tier 2 produce low confidence.
+- Sends **excerpt + metadata only** — never the full document file.
+- Typical payload: file name, extension, first N characters of extracted text, candidate categories with descriptions.
+- Requires `OPENAI_API_KEY` in `.env` and `CLASSIFICATION_MODE=hybrid` or `api`.
+
+### Confidence routing
+
+| Score | Action |
+|-------|--------|
+| **High** | Assign primary taxonomy folder automatically |
+| **Medium** | Assign folder + flag in manifest for review |
+| **Low** | Route to `19_Unclassified_Review_Queue` with classification reason |
+
+No silent misclassification — uncertain files are always flagged or queued.
+
+### Confidentiality rules
+
+- **Default:** all ingestion and classification runs locally; no cloud upload.
+- **API mode is opt-in** — only active when `OPENAI_API_KEY` is set.
+- API keys stored in `.env`, never in `config/default.yaml` or taxonomy files.
+- Processing log records whether API was used and what text was sent externally.
+- Original source files are never uploaded.
+
+### Inputs to the classifier
+
+- File name, extension, size, filesystem dates
+- Extracted text excerpt (from Milestone 1 ingestion output)
+- Taxonomy category `description` and `keywords`
+- Email-thread flags (when email chain parsing is available)
+
+### Outputs per classified file
+
+- Primary category folder
+- Confidence score (`high` / `medium` / `low`)
+- Short classification reason
+- Review flag when below threshold
+
+---
+
+## 6. Application configuration
 
 **File:** `config/default.yaml`
 
@@ -177,7 +264,7 @@ Category `description` fields are written for AI classification. `keywords` supp
 
 ---
 
-## 6. Data models
+## 7. Data models
 
 ### `FileMetadata`
 
@@ -201,7 +288,7 @@ Batch summary: documents processed, skipped files, failed files.
 
 ---
 
-## 7. Design principles
+## 8. Design principles
 
 | Principle | Implementation (Milestone 1) |
 |-----------|---------------------------|
@@ -213,16 +300,18 @@ Batch summary: documents processed, skipped files, failed files.
 
 ---
 
-## 8. Security and confidentiality
+## 9. Security and confidentiality
 
 - All processing runs locally by default.
 - No documents are uploaded to third-party services during ingestion.
-- API keys (when used in future classification work) will be stored via environment variables, not plain-text config.
+- Classification API calls (when enabled) send excerpts and metadata only — not full files.
+- API keys stored in `.env` via `OPENAI_API_KEY`, not in YAML config files.
+- `CLASSIFICATION_MODE=local` guarantees no external API usage.
 - Contractor does not retain client documents.
 
 ---
 
-## 9. Technology stack
+## 10. Technology stack
 
 | Layer | Choice |
 |-------|--------|
@@ -233,12 +322,14 @@ Batch summary: documents processed, skipped files, failed files.
 | Office (modern) | python-docx, openpyxl, python-pptx, xlrd |
 | Office (legacy) | LibreOffice, Word/PowerPoint COM, antiword, catdoc |
 | Email | stdlib `email`, extract-msg |
-| Config | YAML |
+| Config | YAML + `.env` for secrets |
 | CLI | Click |
+| Classification (local) | Taxonomy keywords + sentence-transformers embeddings |
+| Classification (API) | OpenAI API — optional, excerpts only |
 
 ---
 
-## 10. Repository structure
+## 11. Repository structure
 
 ```
 AI-Assisted Data Room File Organizer/
@@ -271,7 +362,7 @@ The `*.egg-info/` folder is created by `pip install -e .` and tells Python where
 
 ---
 
-## 11. Command-line interface
+## 12. Command-line interface
 
 ```bash
 dataroom taxonomy
@@ -295,7 +386,7 @@ Each document in the JSON output stores the **full absolute `source_path`** to t
 
 ---
 
-## 12. Host dependencies
+## 13. Host dependencies
 
 | Tool | Required for |
 |------|--------------|
@@ -310,7 +401,7 @@ If a tool is missing, ingestion continues with available methods and records exp
 
 ---
 
-## 13. Risks and mitigations
+## 14. Risks and mitigations
 
 | Risk | Mitigation |
 |------|------------|
@@ -322,7 +413,7 @@ If a tool is missing, ingestion continues with available methods and records exp
 
 ---
 
-## 14. Deliverables summary
+## 15. Deliverables summary
 
 | Requirement | Delivery |
 |-------------|----------|
@@ -331,6 +422,7 @@ If a tool is missing, ingestion continues with available methods and records exp
 | Core ingestion | All specified file types via `dataroom.ingestion` |
 | Legacy Office | `legacy_office.py` fallback chain for `.doc` / `.ppt` |
 | Tesseract OCR | `dataroom.ocr.tesseract` wired into PDF and image ingestion |
+| Classification method | Hybrid local-first + optional API — §5; `.env.example` |
 | Architecture document | This file |
 
 See also: `docs/MILESTONE_1.md` for the full Milestone 1 deliverables report.
@@ -343,3 +435,4 @@ See also: `docs/MILESTONE_1.md` for the full Milestone 1 deliverables report.
 |---------|------|---------|
 | 0.1.0 | June 2026 | Initial architecture document |
 | 0.2.0 | June 2026 | Refocused on Milestone 1 deliverables only; added path conventions, filesystem date notes, `MILESTONE_1.md` reference |
+| 0.3.0 | June 2026 | Added §5 confirmed classification approach (hybrid local-first + optional API) |
