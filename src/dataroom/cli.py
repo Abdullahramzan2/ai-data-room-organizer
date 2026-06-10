@@ -1,16 +1,20 @@
-"""Command-line interface for Milestone 1 ingestion."""
+"""Command-line interface for the data room organizer."""
 
 from __future__ import annotations
 
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import click
 from tqdm import tqdm
 
+from dataroom.classification import ClassificationEngine, load_classification_config
+from dataroom.classification.engine import default_cache_dir
 from dataroom.config import load_app_config, load_taxonomy
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
+from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
 from dataroom.ingestion.pipeline import run_ingestion
 from dataroom.ocr.tesseract import OcrConfig
 
@@ -108,6 +112,80 @@ def ingest_cmd(
             f"{len(result.skipped_files)} skipped, "
             f"{len(result.failed_files)} failed)"
         )
+
+
+def _document_from_ingestion_row(row: dict[str, Any]) -> ExtractedDocument:
+    return ExtractedDocument(
+        metadata=FileMetadata(
+            source_path=Path(row["source_path"]),
+            file_name=row["file_name"],
+            extension=row["extension"],
+            file_size=row["file_size"],
+        ),
+        text_content=row.get("text_content", ""),
+        ocr_text=row.get("ocr_text", ""),
+        extraction_method=ExtractionMethod(row.get("extraction_method", "skipped")),
+    )
+
+
+@main.command("classify")
+@click.argument(
+    "ingestion_json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to application config YAML.",
+)
+@click.option(
+    "--output",
+    "output_path",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Write classification results as JSON (default: print summary).",
+)
+def classify_cmd(
+    ingestion_json: Path,
+    config_path: Path | None,
+    output_path: Path | None,
+) -> None:
+    """Classify documents from a dataroom ingest JSON file."""
+    config = load_app_config(config_path)
+    data = json.loads(ingestion_json.read_text(encoding="utf-8"))
+    documents = [_document_from_ingestion_row(row) for row in data.get("documents", [])]
+
+    if not documents:
+        click.echo("No documents found in ingestion JSON.")
+        return
+
+    engine = ClassificationEngine(
+        load_taxonomy(config=config),
+        load_classification_config(config),
+        cache_dir=default_cache_dir(config),
+    )
+
+    results = []
+    for doc in tqdm(documents, desc="Classifying", unit="file"):
+        result = engine.classify_document(doc)
+        results.append(result.to_dict())
+        click.echo(
+            f"{doc.metadata.file_name} -> {result.category_folder} "
+            f"({result.confidence}, {result.score:.2f})"
+        )
+
+    summary = {
+        "ingestion_json": str(ingestion_json),
+        "classified": len(results),
+        "results": results,
+    }
+
+    if output_path:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        click.echo(f"Wrote results to {output_path}")
 
 
 @main.command("taxonomy")

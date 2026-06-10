@@ -1,3 +1,11 @@
+# Install (from project root):
+#   python -m venv .venv
+#   .venv\Scripts\activate          (Windows)
+#   pip install -r requirements.txt
+#   pip install -e .
+#
+# Host tools (not pip): Tesseract OCR, optional LibreOffice for legacy .doc/.ppt
+
 # Core document processing
 PyMuPDF>=1.24.0
 pdfplumber>=0.11.0
@@ -13,4 +21,10 @@ PyYAML>=6.0.1
 python-dateutil>=2.9.0
 click>=8.1.0
 tqdm>=4.66.0
-pytest>=8.0.0
+python-dotenv>=1.0.0
+
+# Classification (M2) — sentence-transformers pulls torch automatically
+sentence-transformers>=3.0.0
+faiss-cpu>=1.8.0
+numpy>=1.26.0,<3.0.0
+openai>=1.40.0

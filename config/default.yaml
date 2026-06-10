@@ -45,5 +45,21 @@ legacy_office:
   # Seconds to wait for conversion subprocesses
   conversion_timeout: 120
 
+classification:
+  excerpt_chars: 4000
+  high_threshold: 0.75
+  medium_threshold: 0.50
+  keyword_weight: 0.3
+  embedding_weight: 0.7
+  embedding_model: all-MiniLM-L6-v2
+  llm_excerpt_chars: 3000
+  top_candidates: 3
+
+output:
+  naming_mode: preserve
+  manifest_file: manifest.csv
+  review_queue_file: review_queue.csv
+
 paths:
   taxonomy_file: taxonomy/real_estate_development.yaml
+  cache_dir: output/.cache

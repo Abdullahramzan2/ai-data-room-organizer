@@ -10,9 +10,10 @@ build/
 venv/
 env/
 
-# IDE
+# IDE / editor
 .idea/
 .vscode/
+.cursor/
 *.swp
 *.swo
 
@@ -20,6 +21,13 @@ env/
 output/
 data/sample_output/
 *.log
+
+# Classification caches (FAISS + embedding index)
+output/.cache/
+.cache/
+
+# Delivery / local artifacts
+*.zip
 
 # Secrets
 .env
@@ -31,7 +39,13 @@ credentials.json
 Thumbs.db
 desktop.ini
 
-# Test artifacts
+# Test / lint artifacts
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
+
+# Hugging Face model cache (if set to project-local)
+models/
+huggingface/
