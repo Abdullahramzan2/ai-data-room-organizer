@@ -3,8 +3,8 @@
 
 | | |
 |---|---|
-| **Version** | 0.1.0 |
-| **Milestone** | Project Mobilization — Design / Architecture |
+| **Version** | 0.2.0 |
+| **Milestone** | M1 Ingestion + M2 Prototype |
 | **Status** | Delivered |
 | **Date** | June 2026 |
 | **Client** | Carl Quesinberry |
@@ -13,9 +13,9 @@
 
 ## 1. Executive summary
 
-This document describes the technical architecture delivered in Milestone 1: a **local document ingestion system** that accepts a master folder of mixed project files, extracts text and metadata (including OCR for scanned documents), and produces structured JSON output.
+This document describes the technical architecture: a **local document ingestion system** (M1) plus a **classification and organization prototype** (M2) that copies files into taxonomy folders with CSV manifest and review queue outputs.
 
-The system also includes a **config-driven taxonomy YAML** (folders `00`–`19`) ready for AI-guided classification, a **confirmed hybrid local-first classification approach** (§5), and a command-line interface for running ingestion.
+The system includes a **config-driven taxonomy YAML** (folders `00`–`19`), a **hybrid local-first classification engine** (§5), and CLI commands including `dataroom run` for the full pipeline.
 
 Design principles align with the full project vision: originals untouched, domain-flexible taxonomy, local-first processing, no silent failures, and audit-friendly outputs.
 
@@ -165,7 +165,7 @@ Category `description` fields are written for AI classification. `keywords` supp
 
 ## 5. Confirmed classification approach
 
-Milestone 1 confirms the classification strategy for the data room organizer. **Implementation follows in the next development phase**; this section records the agreed design.
+**Implemented in Milestone 2** (`src/dataroom/classification/`). This section records the design and runtime behavior.
 
 ### Decision: hybrid local-first with optional API escalation
 
@@ -260,7 +260,9 @@ No silent misclassification — uncertain files are always flagged or queued.
 | `ocr` | `enabled`, `language`, `pdf_dpi`, `min_native_text_chars`, `tesseract_cmd` |
 | `ingestion` | `max_text_chars`, `max_file_size_bytes` |
 | `legacy_office` | `libreoffice_cmd`, `enable_com`, `conversion_timeout` |
-| `paths` | `taxonomy_file` |
+| `classification` | `excerpt_chars`, `high_threshold`, `medium_threshold`, `embedding_model` |
+| `output` | `naming_mode`, `manifest_file`, `review_queue_file` |
+| `paths` | `taxonomy_file`, `cache_dir` |
 
 ---
 
