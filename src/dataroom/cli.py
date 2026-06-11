@@ -13,6 +13,7 @@ from tqdm import tqdm
 from dataroom.classification import ClassificationEngine, load_classification_config
 from dataroom.classification.engine import default_cache_dir
 from dataroom.config import load_app_config, load_taxonomy
+from dataroom.export import build_manifest_rows, write_manifest_csv, write_review_queue_csv
 from dataroom.organizer import organize_files
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
@@ -227,6 +228,58 @@ def organize_cmd(
     for item in organized:
         click.echo(f"{item.source_path.name} -> {item.dest_path}")
     click.echo(f"Copied {len(organized)} file(s) to {output_dir}")
+
+
+@main.command("export")
+@click.argument(
+    "ingestion_json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.argument(
+    "classification_json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    required=True,
+    help="Folder where manifest.csv and review_queue.csv are written.",
+)
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to application config YAML.",
+)
+@click.option("--rename", is_flag=True, help="Match output paths used with dataroom organize --rename.")
+def export_cmd(
+    ingestion_json: Path,
+    classification_json: Path,
+    output_dir: Path,
+    config_path: Path | None,
+    rename: bool,
+) -> None:
+    """Write manifest.csv and review_queue.csv from ingest + classification JSON."""
+    config = load_app_config(config_path)
+    output_cfg = config.get("output", {})
+    ingestion = json.loads(ingestion_json.read_text(encoding="utf-8"))
+    classification = json.loads(classification_json.read_text(encoding="utf-8"))
+
+    rows = build_manifest_rows(
+        ingestion.get("documents", []),
+        classification.get("results", []),
+        output_dir,
+        rename=rename,
+    )
+    manifest_path = output_dir / output_cfg.get("manifest_file", "manifest.csv")
+    review_path = output_dir / output_cfg.get("review_queue_file", "review_queue.csv")
+
+    write_manifest_csv(manifest_path, rows)
+    write_review_queue_csv(review_path, rows)
+    review_count = sum(1 for r in rows if r.get("needs_review") == "true")
+    click.echo(f"Wrote {manifest_path} ({len(rows)} rows)")
+    click.echo(f"Wrote {review_path} ({review_count} rows)")
 
 
 @main.command("taxonomy")
