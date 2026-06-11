@@ -19,8 +19,12 @@ env/
 
 # Project outputs
 output/
-data/sample_output/
 *.log
+
+# Local input data (do not commit client/sample files)
+data/
+test_input/
+input/
 
 # Classification caches (FAISS + embedding index)
 output/.cache/

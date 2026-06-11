@@ -15,6 +15,7 @@ from dataroom.classification.engine import default_cache_dir
 from dataroom.config import load_app_config, load_taxonomy
 from dataroom.export import build_manifest_rows, write_manifest_csv, write_review_queue_csv
 from dataroom.organizer import organize_files
+from dataroom.pipeline import run_pipeline
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
 from dataroom.ingestion.pipeline import run_ingestion
@@ -228,6 +229,48 @@ def organize_cmd(
     for item in organized:
         click.echo(f"{item.source_path.name} -> {item.dest_path}")
     click.echo(f"Copied {len(organized)} file(s) to {output_dir}")
+
+
+@main.command("run")
+@click.argument("input_dir", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option(
+    "--output-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    required=True,
+    help="Output folder for organized files, manifest, and review queue.",
+)
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to application config YAML.",
+)
+@click.option("--rename", is_flag=True, help="Use standardized destination file names.")
+@click.option("--no-ocr", is_flag=True, help="Disable OCR even if configured.")
+@click.option("--no-recursive", is_flag=True, help="Do not scan subfolders.")
+def run_cmd(
+    input_dir: Path,
+    output_dir: Path,
+    config_path: Path | None,
+    rename: bool,
+    no_ocr: bool,
+    no_recursive: bool,
+) -> None:
+    """Ingest, classify, organize, and export in one step."""
+    summary = run_pipeline(
+        input_dir,
+        output_dir,
+        config_path=config_path,
+        rename=rename,
+        no_ocr=no_ocr,
+        no_recursive=no_recursive,
+    )
+    click.echo(f"Processed {summary['processed']} file(s)")
+    click.echo(f"Organized {summary['organized']} file(s) -> {summary['output_dir']}")
+    click.echo(f"Manifest: {summary['manifest']}")
+    click.echo(f"Review queue: {summary['review_queue']} ({summary['review_queue_count']} flagged)")
+    click.echo(f"Summary: {output_dir / 'run_summary.json'}")
 
 
 @main.command("export")
