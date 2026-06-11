@@ -13,6 +13,7 @@ from tqdm import tqdm
 from dataroom.classification import ClassificationEngine, load_classification_config
 from dataroom.classification.engine import default_cache_dir
 from dataroom.config import load_app_config, load_taxonomy
+from dataroom.organizer import organize_files
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
 from dataroom.ingestion.pipeline import run_ingestion
@@ -186,6 +187,46 @@ def classify_cmd(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
         click.echo(f"Wrote results to {output_path}")
+
+
+@main.command("organize")
+@click.argument(
+    "classification_json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    required=True,
+    help="Folder where taxonomy subfolders and copied files are written.",
+)
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to application config YAML.",
+)
+@click.option("--rename", is_flag=True, help="Use standardized destination file names.")
+def organize_cmd(
+    classification_json: Path,
+    output_dir: Path,
+    config_path: Path | None,
+    rename: bool,
+) -> None:
+    """Copy classified files into taxonomy folders (originals untouched)."""
+    config = load_app_config(config_path)
+    taxonomy = load_taxonomy(config=config)
+    data = json.loads(classification_json.read_text(encoding="utf-8"))
+    rows = data.get("results", [])
+    if not rows:
+        click.echo("No classification results found in JSON.")
+        return
+
+    organized = organize_files(rows, output_dir, taxonomy, rename=rename)
+    for item in organized:
+        click.echo(f"{item.source_path.name} -> {item.dest_path}")
+    click.echo(f"Copied {len(organized)} file(s) to {output_dir}")
 
 
 @main.command("taxonomy")
