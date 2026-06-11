@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataroom.classification.models import ClassificationConfig, TaxonomyCategory, TierResult
 
+# Strong filename signals even when the keyword is a short acronym
+_FILENAME_ACRONYM_BOOST = frozenset({"esa", "brac", "rcra", "foset", "fost", "tceq", "usace"})
 
 def _is_excluded(category: TaxonomyCategory, haystack: str) -> bool:
     for phrase in category.exclude_if:
@@ -34,10 +36,15 @@ def score_category_keywords(
 
     # Score relative to keyword list size, capped at 1.0
     score = min(1.0, len(matched) / max(1, min(len(category.keywords), 5)))
-    # Boost when keyword appears in file name
+    # Boost when keyword appears in file name (strong signal in data rooms)
     name_lower = file_name.lower()
-    if any(kw in name_lower for kw in matched):
+    name_matched = [kw for kw in matched if kw in name_lower]
+    if name_matched:
         score = min(1.0, score + 0.15)
+        if len(name_matched) >= 2 or any(len(kw) >= 4 for kw in name_matched):
+            score = max(score, 0.55)
+        elif any(kw in _FILENAME_ACRONYM_BOOST for kw in name_matched):
+            score = max(score, 0.55)
     return score, matched
 
 

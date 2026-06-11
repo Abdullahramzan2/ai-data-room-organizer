@@ -28,7 +28,10 @@ class PdfExtractor(BaseExtractor):
 
         doc.text_content = self._truncate("\n".join(texts).strip())
 
-        if self.ocr and self.ocr.needs_ocr(doc.text_content):
+        needs_scan = not doc.text_content.strip() or (
+            self.ocr and self.ocr.needs_ocr(doc.text_content)
+        )
+        if needs_scan:
             doc = self._apply_ocr_if_needed(doc, path, pdf=True)
         elif not doc.text_content and not doc.ocr_applied:
             doc.warnings.append("No extractable text found in PDF")

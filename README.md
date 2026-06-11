@@ -11,6 +11,24 @@ Local tool to ingest, classify, and organize large document batches into a data-
 - [Poppler](https://poppler.freedesktop.org/) on `PATH` (PDF → image for OCR)
 - [LibreOffice](https://www.libreoffice.org/) for legacy `.doc` / `.ppt` (recommended)
 
+### System dependencies (Windows)
+
+Install Tesseract and Poppler before running OCR on PNGs or scanned PDFs. The app auto-detects common install paths; restart your terminal after installing so `PATH` updates.
+
+```powershell
+winget install --id UB-Mannheim.TesseractOCR --accept-package-agreements --accept-source-agreements
+winget install --id oschwartz10612.Poppler --accept-package-agreements --accept-source-agreements
+```
+
+Verify:
+
+```powershell
+tesseract --version
+pdftoppm -h
+```
+
+Optional overrides in `config/default.yaml`: `ocr.tesseract_cmd`, `ocr.poppler_path`.
+
 ## Installation
 
 ```powershell

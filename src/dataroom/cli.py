@@ -67,6 +67,7 @@ def ingest_cmd(
         pdf_dpi=ocr_cfg.get("pdf_dpi", 300),
         min_native_text_chars=ocr_cfg.get("min_native_text_chars", 50),
         tesseract_cmd=ocr_cfg.get("tesseract_cmd"),
+        poppler_path=ocr_cfg.get("poppler_path"),
     )
     legacy_office_config = LegacyOfficeConfig(
         libreoffice_cmd=legacy_cfg.get("libreoffice_cmd"),

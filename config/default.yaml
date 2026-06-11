@@ -28,8 +28,10 @@ ocr:
   language: eng
   # DPI for rendering PDF pages before OCR
   pdf_dpi: 300
-  # Path to tesseract binary (null = use system PATH)
+  # Path to tesseract binary (null = auto-detect PATH or common Windows install)
   tesseract_cmd: null
+  # Poppler bin folder for PDF OCR (null = auto-detect PATH or common Windows install)
+  poppler_path: null
 
 ingestion:
   # Max characters stored per document (downstream classification uses excerpts)

@@ -2,7 +2,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from dataroom.classification.engine import ClassificationEngine
-from dataroom.classification.keyword import classify_by_keywords
+from dataroom.classification.keyword import classify_by_keywords, score_category_keywords
 from dataroom.classification.models import ClassificationConfig, TierResult
 from dataroom.classification.taxonomy import classifiable_categories, parse_categories
 from dataroom.ingestion.models import ExtractedDocument, FileMetadata
@@ -52,6 +52,41 @@ def test_keyword_matches_land_control():
     assert result.score >= 0.75
 
 
+def test_brac_environmental_filename():
+    categories = classifiable_categories(
+        parse_categories(
+            {
+                "categories": [
+                    {
+                        "id": "05",
+                        "folder": "05_Environmental_RCRA_BRAC_FOSET",
+                        "keywords": [
+                            "brac",
+                            "environmental condition",
+                            "environmental condition of property",
+                            "remediation",
+                        ],
+                    },
+                    {
+                        "id": "19",
+                        "folder": "19_Unclassified_Review_Queue",
+                        "is_review_queue": True,
+                    },
+                ]
+            }
+        )
+    )
+    result = classify_by_keywords(
+        categories,
+        "LSAAP BRAC 2005 Environmental Condition of Property Report.pdf",
+        "executive summary survey methodology",
+        ClassificationConfig(),
+    )
+    assert result is not None
+    assert result.category_id == "05"
+    assert result.score >= 0.55
+
+
 def test_engine_high_keyword_match():
     engine = ClassificationEngine(MINI_TAXONOMY, ClassificationConfig())
     doc = _sample_doc("purchase and sale agreement with escrow and closing conditions")
@@ -70,7 +105,7 @@ def test_engine_low_confidence_goes_to_review_queue():
         ClassificationConfig(),
         settings=Settings(classification_mode="local"),
     )
-    doc = _sample_doc("random unrelated memo about lunch plans")
+    doc = _sample_doc("random unrelated memo about lunch plans", name="lunch_memo.txt")
 
     low_embedding = TierResult(
         category_id="02",

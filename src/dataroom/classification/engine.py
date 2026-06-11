@@ -166,6 +166,11 @@ class ClassificationEngine:
             confidence = _score_to_confidence(keyword_result.score, self.config)
             return _finalize_result(source_path, keyword_result, confidence, self.categories, text)
 
+        # Strong filename/taxonomy keyword hit — do not dilute with weaker embeddings
+        if keyword_result and keyword_result.score >= self.config.medium_threshold:
+            confidence = _score_to_confidence(keyword_result.score, self.config)
+            return _finalize_result(source_path, keyword_result, confidence, self.categories, text)
+
         # Tier 2 — embeddings
         embedding_result, candidates = self._embedder.classify(
             meta.file_name,

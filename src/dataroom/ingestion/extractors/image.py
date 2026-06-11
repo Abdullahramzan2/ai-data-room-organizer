@@ -14,7 +14,10 @@ class ImageExtractor(BaseExtractor):
     def extract(self, path: Path, metadata: FileMetadata) -> ExtractedDocument:
         doc = ExtractedDocument(metadata=metadata, extraction_method=ExtractionMethod.OCR)
         if not self.ocr or not self.ocr.is_available():
-            doc.errors.append("Image files require Tesseract OCR, which is not available")
+            doc.errors.append(
+                "Image files require Tesseract OCR. "
+                "Install Tesseract and add it to PATH, or set ocr.tesseract_cmd in config/default.yaml"
+            )
             doc.extraction_method = ExtractionMethod.FAILED
             return doc
         try:

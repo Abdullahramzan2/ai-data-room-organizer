@@ -16,11 +16,17 @@ categories:
       and source authentication matrix. Administrative and meta outputs for the data room.
     keywords:
       - manifest
+      - MANIFEST
       - index
+      - INDEX
       - classification log
+      - CLASSIFICATION LOG
       - review queue
+      - REVIEW QUEUE
       - duplicate report
+      - DUPLICATE REPORT
       - authentication matrix
+      - AUTHENTICATION MATRIX
 
   - id: "01"
     folder: "01_Project_Overview"
@@ -29,11 +35,17 @@ categories:
       materials, maps, high-level exhibits, marketing materials, and capital markets summaries.
     keywords:
       - project overview
+      - PROJECT OVERVIEW
       - executive summary
+      - EXECUTIVE SUMMARY
       - investment summary
+      - INVESTMENT SUMMARY
       - site overview
+      - SITE OVERVIEW
       - marketing
+      - MARKETING
       - capital markets summary
+      - CAPITAL MARKETS SUMMARY
 
   - id: "02"
     folder: "02_Land_Control_and_PSA"
@@ -41,15 +53,24 @@ categories:
       Purchase and sale agreements, amendments, LOIs, closing conditions, deposits,
       escrow documents, land pricing, parcel information, property cards, and acreage reconciliations.
     keywords:
+      - psa
       - PSA
       - purchase and sale
+      - PURCHASE AND SALE
+      - loi
       - LOI
       - land control
+      - LAND CONTROL
       - escrow
+      - ESCROW
       - closing conditions
+      - CLOSING CONDITIONS
       - parcel
+      - PARCEL
       - acreage
+      - ACREAGE
       - property card
+      - PROPERTY CARD
 
   - id: "03"
     folder: "03_Title_Survey_and_ALTA"
@@ -58,15 +79,24 @@ categories:
       encumbrance schedules, access rights, road rights, utility easements, deed restrictions,
       and mineral / brine / groundwater rights.
     keywords:
+      - alta
       - ALTA
       - title commitment
+      - TITLE COMMITMENT
       - survey
+      - SURVEY
       - easement
+      - EASEMENT
       - encumbrance
+      - ENCUMBRANCE
       - legal description
+      - LEGAL DESCRIPTION
       - deed restriction
+      - DEED RESTRICTION
       - mineral rights
+      - MINERAL RIGHTS
       - groundwater rights
+      - GROUNDWATER RIGHTS
 
   - id: "04"
     folder: "04_Zoning_Land_Use_and_Local_Approvals"
@@ -76,13 +106,21 @@ categories:
       and vested-rights documentation.
     keywords:
       - zoning
+      - ZONING
       - land use
+      - LAND USE
       - permitted use
+      - PERMITTED USE
+      - ahj
       - AHJ
       - site plan
+      - SITE PLAN
       - building permit
+      - BUILDING PERMIT
       - vested rights
+      - VESTED RIGHTS
       - data center use
+      - DATA CENTER USE
 
   - id: "05"
     folder: "05_Environmental_RCRA_BRAC_FOSET"
@@ -91,16 +129,40 @@ categories:
       environmental condition reports, TCEQ records, remedy standards, army retained rights,
       and land use control materials.
     keywords:
-      - Phase I
-      - Phase II
+      - phase i
+      - PHASE I
+      - phase ii
+      - PHASE II
+      - esa
       - ESA
+      - rcra
       - RCRA
+      - brac
       - BRAC
+      - foset
       - FOSET
+      - fost
       - FOST
+      - tceq
       - TCEQ
       - environmental assessment
+      - ENVIRONMENTAL ASSESSMENT
+      - environmental condition
+      - ENVIRONMENTAL CONDITION
+      - environmental condition of property
+      - ENVIRONMENTAL CONDITION OF PROPERTY
+      - property report
+      - PROPERTY REPORT
+      - remediation
+      - REMEDIATION
+      - remediation protocol
+      - REMEDIATION PROTOCOL
+      - contaminated sites
+      - CONTAMINATED SITES
+      - abandoned military
+      - ABANDONED MILITARY
       - land use control
+      - LAND USE CONTROL
 
   - id: "06"
     folder: "06_Wetlands_Streams_USACE"
@@ -109,15 +171,24 @@ categories:
       jurisdictional determinations, Section 404/401 materials, mitigation estimates,
       mitigation bank information, stream credits, and monitoring plans.
     keywords:
+      - usace
       - USACE
-      - Section 404
-      - Section 401
+      - section 404
+      - SECTION 404
+      - section 401
+      - SECTION 401
+      - txram
       - TXRAM
       - wetland
+      - WETLAND
       - stream
+      - STREAM
       - mitigation
+      - MITIGATION
       - jurisdictional determination
-      - Stantec
+      - JURISDICTIONAL DETERMINATION
+      - stantec
+      - STANTEC
 
   - id: "07"
     folder: "07_Floodplain_Drainage_and_Stormwater"
@@ -125,13 +196,20 @@ categories:
       FEMA/FIRM maps, floodplain analyses, drainage studies, stormwater plans, SWPPP
       documents, civil drainage correspondence, and finished-floor elevation analysis.
     keywords:
+      - fema
       - FEMA
+      - firm
       - FIRM
       - floodplain
+      - FLOODPLAIN
       - drainage
+      - DRAINAGE
       - stormwater
+      - STORMWATER
+      - swppp
       - SWPPP
       - finished floor elevation
+      - FINISHED FLOOR ELEVATION
 
   - id: "08"
     folder: "08_Geotechnical_and_Soils"
@@ -140,12 +218,19 @@ categories:
       recommendations, pavement recommendations, and groundwater observations.
     keywords:
       - geotechnical
+      - GEOTECHNICAL
       - soils
+      - SOILS
       - boring log
+      - BORING LOG
+      - nrcs
       - NRCS
       - foundation
+      - FOUNDATION
       - pavement
+      - PAVEMENT
       - groundwater
+      - GROUNDWATER
 
   - id: "09"
     folder: "09_Civil_Engineering_and_Site_Planning"
@@ -155,12 +240,20 @@ categories:
       and development phasing plans.
     keywords:
       - civil engineering
+      - CIVIL ENGINEERING
       - site plan
+      - SITE PLAN
       - grading
+      - GRADING
       - utility layout
-      - LiDAR
+      - UTILITY LAYOUT
+      - lidar
+      - LIDAR
       - topography
+      - TOPOGRAPHY
       - phasing plan
+      - PHASING PLAN
+      - mtg
       - MTG
 
   - id: "10"
@@ -170,15 +263,24 @@ categories:
       interconnection materials, SPP materials, substation/switchyard materials,
       utility cost estimates, and KRSA materials.
     keywords:
+      - aep
       - AEP
+      - swepco
       - SWEPCO
       - load study
+      - LOAD STUDY
       - interconnection
+      - INTERCONNECTION
+      - spp
       - SPP
       - substation
+      - SUBSTATION
       - switchyard
+      - SWITCHYARD
+      - krsa
       - KRSA
       - utility
+      - UTILITY
 
   - id: "11"
     folder: "11_BTM_Generation_BESS_and_Energy"
@@ -187,16 +289,26 @@ categories:
       services agreements, PPA/ESA/tolling documents, heat rate/performance materials,
       BTM permitting, and energy site layouts.
     keywords:
+      - btm
       - BTM
+      - bess
       - BESS
       - fuel cell
-      - Bloom
+      - FUEL CELL
+      - bloom
+      - BLOOM
+      - sofc
       - SOFC
       - turbine
+      - TURBINE
+      - ppa
       - PPA
+      - esa
       - ESA
       - tolling
+      - TOLLING
       - energy services
+      - ENERGY SERVICES
 
   - id: "12"
     folder: "12_Natural_Gas"
@@ -206,14 +318,23 @@ categories:
       agreements, and transportation agreements.
     keywords:
       - natural gas
+      - NATURAL GAS
       - pipeline
+      - PIPELINE
+      - ngpl
       - NGPL
       - gas lateral
+      - GAS LATERAL
       - compression
+      - COMPRESSION
       - metering
+      - METERING
       - transportation agreement
-      - Navitas
-      - Energy Transfer
+      - TRANSPORTATION AGREEMENT
+      - navitas
+      - NAVITAS
+      - energy transfer
+      - ENERGY TRANSFER
 
   - id: "13"
     folder: "13_Water_and_Wastewater"
@@ -222,12 +343,19 @@ categories:
       treatment plant documents, water line routing, capacity letters, and will-serve letters.
     keywords:
       - water supply
+      - WATER SUPPLY
       - wastewater
+      - WASTEWATER
       - treatment plant
+      - TREATMENT PLANT
       - will-serve
+      - WILL-SERVE
       - fire flow
-      - Riverbend
+      - FIRE FLOW
+      - riverbend
+      - RIVERBEND
       - potable water
+      - POTABLE WATER
 
   - id: "14"
     folder: "14_Fiber_and_Telecom"
@@ -236,14 +364,23 @@ categories:
       diversity, and meet-me-room materials.
     keywords:
       - fiber
+      - FIBER
       - telecom
+      - TELECOM
       - dark fiber
+      - DARK FIBER
+      - dia
       - DIA
       - wavelength
+      - WAVELENGTH
+      - sla
       - SLA
       - route diversity
-      - Conterra
-      - Vyve
+      - ROUTE DIVERSITY
+      - conterra
+      - CONTERRA
+      - vyve
+      - VYVE
 
   - id: "15"
     folder: "15_Permitting_FAST41_Federal_State"
@@ -252,12 +389,18 @@ categories:
       executive order materials, TCEQ/USACE permitting, state/federal agency correspondence,
       and permit matrix.
     keywords:
+      - fast-41
       - FAST-41
       - permitting
+      - PERMITTING
       - permit matrix
+      - PERMIT MATRIX
       - federal agency
-      - TCEQ permit
+      - FEDERAL AGENCY
+      - tceq permit
+      - TCEQ PERMIT
       - executive order
+      - EXECUTIVE ORDER
 
   - id: "16"
     folder: "16_Vendors_Proposals_and_Budgets"
@@ -266,12 +409,19 @@ categories:
       budgets, utility study budgets, development budgets, and capital cost estimates.
     keywords:
       - proposal
+      - PROPOSAL
       - scope of work
+      - SCOPE OF WORK
       - fee estimate
+      - FEE ESTIMATE
       - budget
+      - BUDGET
       - capital cost
+      - CAPITAL COST
       - consultant
+      - CONSULTANT
       - vendor
+      - VENDOR
 
   - id: "17"
     folder: "17_Capital_Markets_and_Investor_Materials"
@@ -280,11 +430,17 @@ categories:
       responses, status summaries, source authentication matrices, and deal strategy.
     keywords:
       - capital markets
+      - CAPITAL MARKETS
       - investor
-      - Houlihan
+      - INVESTOR
+      - houlihan
+      - HOULIHAN
       - investment banker
+      - INVESTMENT BANKER
       - deal strategy
+      - DEAL STRATEGY
       - data room response
+      - DATA ROOM RESPONSE
 
   - id: "18"
     folder: "18_Correspondence"
@@ -293,13 +449,21 @@ categories:
       third-party communications. Includes scanned or exported email thread PDFs.
     keywords:
       - email
+      - EMAIL
       - correspondence
+      - CORRESPONDENCE
       - letter
+      - LETTER
       - meeting notes
+      - MEETING NOTES
       - call summary
-      - From:
-      - Subject:
+      - CALL SUMMARY
+      - from:
+      - FROM:
+      - subject:
+      - SUBJECT:
       - forwarded message
+      - FORWARDED MESSAGE
 
   - id: "19"
     folder: "19_Unclassified_Review_Queue"

@@ -19,6 +19,52 @@ class OcrConfig:
     pdf_dpi: int = 300
     min_native_text_chars: int = 50
     tesseract_cmd: str | None = None
+    poppler_path: str | None = None
+
+
+_TESSERACT_WINDOWS_PATHS = (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+)
+
+_POPPLER_WINDOWS_DIRS = (
+    r"C:\Program Files\poppler\Library\bin",
+    r"C:\Program Files\poppler-24.08.0\Library\bin",
+    r"C:\poppler\Library\bin",
+    r"C:\ProgramData\chocolatey\lib\poppler\tools\Library\bin",
+)
+
+
+def resolve_tesseract_cmd(configured: str | None) -> str | None:
+    """Return Tesseract binary path from config, PATH, or common Windows install locations."""
+    if configured:
+        path = Path(configured)
+        return str(path) if path.is_file() else configured
+    found = shutil.which("tesseract")
+    if found:
+        return found
+    for candidate in _TESSERACT_WINDOWS_PATHS:
+        if Path(candidate).is_file():
+            return candidate
+    return None
+
+
+def resolve_poppler_path(configured: str | None) -> str | None:
+    """Return Poppler bin directory for pdf2image (PATH or common Windows locations)."""
+    if configured:
+        path = Path(configured)
+        if path.is_dir():
+            return str(path)
+        if (path / "pdftoppm.exe").is_file() or (path / "pdftoppm").is_file():
+            return str(path)
+        return configured
+    found = shutil.which("pdftoppm")
+    if found:
+        return str(Path(found).parent)
+    for candidate in _POPPLER_WINDOWS_DIRS:
+        if Path(candidate).is_dir():
+            return candidate
+    return None
 
 
 class TesseractOcr:
@@ -38,14 +84,11 @@ class TesseractOcr:
         try:
             import pytesseract
 
-            if self.config.tesseract_cmd:
-                pytesseract.pytesseract.tesseract_cmd = self.config.tesseract_cmd
-            else:
-                binary = shutil.which("tesseract")
-                if not binary:
-                    self._available = False
-                    return False
-                pytesseract.pytesseract.tesseract_cmd = binary
+            binary = resolve_tesseract_cmd(self.config.tesseract_cmd)
+            if not binary or not Path(binary).is_file():
+                self._available = False
+                return False
+            pytesseract.pytesseract.tesseract_cmd = binary
             pytesseract.get_tesseract_version()
             self._pytesseract = pytesseract
             self._available = True
@@ -84,7 +127,18 @@ class TesseractOcr:
         except ImportError as exc:
             raise RuntimeError("pdf2image is required for PDF OCR") from exc
 
-        pages = convert_from_path(str(path), dpi=self.config.pdf_dpi)
+        poppler_path = resolve_poppler_path(self.config.poppler_path)
+        kwargs: dict = {"dpi": self.config.pdf_dpi}
+        if poppler_path:
+            kwargs["poppler_path"] = poppler_path
+
+        try:
+            pages = convert_from_path(str(path), **kwargs)
+        except Exception as exc:
+            hint = (
+                "Install Poppler and add it to PATH, or set ocr.poppler_path in config/default.yaml"
+            )
+            raise RuntimeError(f"PDF to image conversion failed: {exc}. {hint}") from exc
         texts: list[str] = []
         for page in pages:
             texts.append(self.ocr_image(page))

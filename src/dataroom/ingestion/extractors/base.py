@@ -36,7 +36,14 @@ class BaseExtractor(ABC):
         if not self.ocr.needs_ocr(doc.text_content):
             return doc
         if not self.ocr.is_available():
-            doc.warnings.append("OCR requested but Tesseract is not installed or not on PATH")
+            doc.warnings.append(
+                "OCR requested but Tesseract is not installed. "
+                "Install Tesseract OCR and add it to PATH, or set ocr.tesseract_cmd in config/default.yaml"
+            )
+            if not doc.text_content.strip():
+                from dataroom.ingestion.models import ExtractionMethod
+
+                doc.extraction_method = ExtractionMethod.FAILED
             return doc
         try:
             if pdf:
