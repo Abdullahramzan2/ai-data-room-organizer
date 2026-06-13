@@ -8,13 +8,16 @@ from typing import Any
 
 from dataroom.classification import ClassificationEngine, load_classification_config
 from dataroom.classification.engine import default_cache_dir
+from dataroom.classification.providers.factory import create_reasoning_provider
 from dataroom.config import load_app_config, load_taxonomy
 from dataroom.export import build_manifest_rows, write_manifest_csv, write_review_queue_csv
+from dataroom.guardrails import GuardrailsEnforcer, load_guardrails_config
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
 from dataroom.ingestion.pipeline import run_ingestion
 from dataroom.organizer import organize_files
 from dataroom.ocr.tesseract import OcrConfig
+from dataroom.settings import get_settings
 
 
 def _document_from_row(row: dict[str, Any]) -> ExtractedDocument:
@@ -28,6 +31,7 @@ def _document_from_row(row: dict[str, Any]) -> ExtractedDocument:
         text_content=row.get("text_content", ""),
         ocr_text=row.get("ocr_text", ""),
         extraction_method=ExtractionMethod(row.get("extraction_method", "skipped")),
+        extra=row.get("extra") or {},
     )
 
 
@@ -47,6 +51,7 @@ def run_pipeline(
     ingest_cfg = config.get("ingestion", {})
     legacy_cfg = config.get("legacy_office", {})
     output_cfg = config.get("output", {})
+    class_cfg = config.get("classification", {})
 
     ocr_config = OcrConfig(
         enabled=not no_ocr and ocr_cfg.get("enabled", True),
@@ -62,7 +67,14 @@ def run_pipeline(
         conversion_timeout=legacy_cfg.get("conversion_timeout", 120),
     )
 
-    # 1. Ingest
+    guardrails_config = load_guardrails_config(config)
+    guardrails = GuardrailsEnforcer(guardrails_config)
+    guardrails._audit_path = guardrails.resolve_audit_path(output_dir)
+
+    settings = get_settings()
+    provider_name = class_cfg.get("reasoning_provider") or settings.reasoning_provider
+    reasoning_provider = create_reasoning_provider(provider_name, settings)
+
     ingestion_result = run_ingestion(
         input_dir,
         supported_extensions=input_cfg.get("supported_extensions", []),
@@ -74,12 +86,14 @@ def run_pipeline(
     )
     ingestion_docs = [d.to_dict() for d in ingestion_result.documents]
 
-    # 2. Classify
     taxonomy = load_taxonomy(config=config)
     engine = ClassificationEngine(
         taxonomy,
         load_classification_config(config),
         cache_dir=default_cache_dir(config),
+        settings=settings,
+        reasoning_provider=reasoning_provider,
+        guardrails=guardrails,
     )
     classification_results = []
     for row in ingestion_docs:
@@ -87,7 +101,6 @@ def run_pipeline(
         result = engine.classify_document(doc)
         classification_results.append(result.to_dict())
 
-    # 3. Organize
     output_dir.mkdir(parents=True, exist_ok=True)
     organized = organize_files(
         classification_results,
@@ -96,7 +109,6 @@ def run_pipeline(
         rename=rename,
     )
 
-    # 4. Export CSVs
     manifest_rows = build_manifest_rows(
         ingestion_docs,
         classification_results,
@@ -118,6 +130,9 @@ def run_pipeline(
         "organized": len(organized),
         "review_queue_count": review_count,
         "api_used_count": api_used_count,
+        "reasoning_provider": reasoning_provider.provider_id,
+        "guardrails_external_api": guardrails_config.allow_external_api,
+        "audit_log": str(guardrails.resolve_audit_path(output_dir) or ""),
         "manifest": str(manifest_path),
         "review_queue": str(review_path),
     }

@@ -55,8 +55,11 @@ class ClassificationResult:
     needs_review: bool = False
     review_reason: str | None = None
     api_used: bool = False
+    classification_basis: str = ""
+    reasoning_provider: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        basis = self.classification_basis or f"{self.method}: {self.reason}"
         return {
             "source_path": str(self.source_path),
             "category_id": self.category_id,
@@ -70,4 +73,6 @@ class ClassificationResult:
             "needs_review": self.needs_review,
             "review_reason": self.review_reason,
             "api_used": self.api_used,
+            "classification_basis": basis,
+            "reasoning_provider": self.reasoning_provider,
         }

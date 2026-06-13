@@ -1,4 +1,4 @@
-"""Classification engine orchestrating keyword, embedding, and LLM tiers."""
+"""Classification engine orchestrating keyword, embedding, and reasoning providers."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from typing import Any
 from dataroom.classification.embeddings import EmbeddingClassifier
 from dataroom.classification.entities import extract_entities
 from dataroom.classification.keyword import classify_by_keywords
-from dataroom.classification.llm import classify_with_llm
 from dataroom.classification.models import (
     ClassificationConfig,
     ClassificationResult,
@@ -16,6 +15,8 @@ from dataroom.classification.models import (
     TaxonomyCategory,
     TierResult,
 )
+from dataroom.classification.providers.base import ReasoningProvider
+from dataroom.classification.providers.factory import create_reasoning_provider
 from dataroom.classification.taxonomy import (
     category_by_id,
     classifiable_categories,
@@ -23,8 +24,9 @@ from dataroom.classification.taxonomy import (
     review_queue_category,
 )
 from dataroom.config import resolve_project_root
+from dataroom.guardrails import GuardrailsConfig, GuardrailsEnforcer
 from dataroom.ingestion.models import ExtractedDocument
-from dataroom.settings import Settings, api_escalation_enabled, get_settings
+from dataroom.settings import Settings, get_settings
 
 
 def load_classification_config(app_config: dict[str, Any]) -> ClassificationConfig:
@@ -61,7 +63,6 @@ def _combine_local_scores(keyword: TierResult | None, embedding: TierResult | No
     emb_score = embedding.score
     combined = (config.keyword_weight * kw_score) + (config.embedding_weight * emb_score)
 
-    # Prefer the tier that contributed more when categories agree
     if keyword.category_id == embedding.category_id:
         return TierResult(
             category_id=keyword.category_id,
@@ -72,7 +73,6 @@ def _combine_local_scores(keyword: TierResult | None, embedding: TierResult | No
             reason=f"Keyword ({kw_score:.2f}) + embedding ({emb_score:.2f})",
         )
 
-    # Disagreement: take higher weighted contribution
     if emb_score >= kw_score:
         return TierResult(
             category_id=embedding.category_id,
@@ -100,6 +100,7 @@ def _finalize_result(
     text: str,
     *,
     api_used: bool = False,
+    reasoning_provider: str | None = None,
 ) -> ClassificationResult:
     review_cat = review_queue_category(categories)
     needs_review = confidence in {"medium", "low"}
@@ -115,6 +116,7 @@ def _finalize_result(
         review_reason = f"Medium confidence ({tier.score:.2f}): {tier.reason}"
 
     entities = extract_entities(text)
+    basis = f"{tier.method}: {tier.reason}"
     return ClassificationResult(
         source_path=source_path,
         category_id=category_id,
@@ -128,6 +130,8 @@ def _finalize_result(
         needs_review=needs_review,
         review_reason=review_reason,
         api_used=api_used,
+        classification_basis=basis,
+        reasoning_provider=reasoning_provider,
     )
 
 
@@ -141,6 +145,8 @@ class ClassificationEngine:
         *,
         settings: Settings | None = None,
         cache_dir: Path | None = None,
+        reasoning_provider: ReasoningProvider | None = None,
+        guardrails: GuardrailsEnforcer | None = None,
         llm_client: Any | None = None,
     ):
         self.settings = settings or get_settings()
@@ -149,13 +155,17 @@ class ClassificationEngine:
         self.categories = parse_categories(taxonomy)
         self._classifiable = classifiable_categories(self.categories)
         self._embedder = EmbeddingClassifier(self._classifiable, config, cache_dir=cache_dir)
+        self._provider = reasoning_provider or create_reasoning_provider(
+            self.settings.reasoning_provider,
+            self.settings,
+        )
+        self._guardrails = guardrails
 
     def classify_document(self, document: ExtractedDocument) -> ClassificationResult:
         meta = document.metadata
         text = document.combined_text[: self.config.excerpt_chars]
         source_path = meta.source_path
 
-        # Tier 1 — keywords
         keyword_result = classify_by_keywords(
             self._classifiable,
             meta.file_name,
@@ -164,14 +174,18 @@ class ClassificationEngine:
         )
         if keyword_result and keyword_result.score >= self.config.high_threshold:
             confidence = _score_to_confidence(keyword_result.score, self.config)
-            return _finalize_result(source_path, keyword_result, confidence, self.categories, text)
+            return _finalize_result(
+                source_path, keyword_result, confidence, self.categories, text,
+                reasoning_provider="local",
+            )
 
-        # Strong filename/taxonomy keyword hit — do not dilute with weaker embeddings
         if keyword_result and keyword_result.score >= self.config.medium_threshold:
             confidence = _score_to_confidence(keyword_result.score, self.config)
-            return _finalize_result(source_path, keyword_result, confidence, self.categories, text)
+            return _finalize_result(
+                source_path, keyword_result, confidence, self.categories, text,
+                reasoning_provider="local",
+            )
 
-        # Tier 2 — embeddings
         embedding_result, candidates = self._embedder.classify(
             meta.file_name,
             text,
@@ -181,47 +195,87 @@ class ClassificationEngine:
 
         if local_result and local_result.score >= self.config.medium_threshold:
             confidence = _score_to_confidence(local_result.score, self.config)
-            return _finalize_result(source_path, local_result, confidence, self.categories, text)
-
-        # Tier 3 — OpenAI escalation
-        if api_escalation_enabled(self.settings):
-            candidate_ids = [cid for cid, _ in candidates]
-            if local_result:
-                candidate_ids.insert(0, local_result.category_id)
-            seen: set[str] = set()
-            llm_candidates: list[TaxonomyCategory] = []
-            for cid in candidate_ids:
-                if cid in seen:
-                    continue
-                cat = category_by_id(self._classifiable, cid)
-                if cat:
-                    llm_candidates.append(cat)
-                    seen.add(cid)
-            if not llm_candidates:
-                llm_candidates = self._classifiable[: self.config.top_candidates]
-
-            llm_result = classify_with_llm(
-                meta.file_name,
-                meta.extension,
-                text,
-                llm_candidates,
-                self._classifiable,
-                self.config,
-                self.settings,
-                client=self.llm_client,
+            return _finalize_result(
+                source_path, local_result, confidence, self.categories, text,
+                reasoning_provider="local",
             )
-            if llm_result:
-                confidence = _score_to_confidence(llm_result.score, self.config)
-                return _finalize_result(
-                    source_path,
-                    llm_result,
-                    confidence,
-                    self.categories,
-                    text,
-                    api_used=True,
+
+        # Tier 3 — reasoning provider escalation (guardrails enforced)
+        local_score = local_result.score if local_result else (keyword_result.score if keyword_result else None)
+        provider = self._provider
+
+        if provider.provider_id != "local" and provider.is_available():
+            allowed = True
+            block_reason = ""
+            if self._guardrails is not None:
+                allowed, block_reason = self._guardrails.can_escalate(
+                    document,
+                    provider.provider_id,
+                    provider.is_external,
+                    local_score,
+                )
+                if not allowed:
+                    self._guardrails.record_blocked(
+                        meta.file_name,
+                        provider.provider_id,
+                        block_reason,
+                        local_score,
+                    )
+
+            if allowed:
+                excerpt = text
+                if self._guardrails is not None:
+                    excerpt = self._guardrails.prepare_excerpt(text, self.config.llm_excerpt_chars)
+                else:
+                    excerpt = text[: self.config.llm_excerpt_chars]
+
+                candidate_ids = [cid for cid, _ in candidates]
+                if local_result:
+                    candidate_ids.insert(0, local_result.category_id)
+                seen: set[str] = set()
+                llm_candidates: list[TaxonomyCategory] = []
+                for cid in candidate_ids:
+                    if cid in seen:
+                        continue
+                    cat = category_by_id(self._classifiable, cid)
+                    if cat:
+                        llm_candidates.append(cat)
+                        seen.add(cid)
+                if not llm_candidates:
+                    llm_candidates = self._classifiable[: self.config.top_candidates]
+
+                provider_result = provider.classify(
+                    meta.file_name,
+                    meta.extension,
+                    excerpt,
+                    llm_candidates,
+                    self._classifiable,
+                    self.config,
+                    client=self.llm_client,
                 )
 
-        # Fallback — route to review queue
+                if self._guardrails is not None:
+                    self._guardrails.record_external_call(
+                        file_name=meta.file_name,
+                        provider_id=provider.provider_id,
+                        allowed=True,
+                        reason="Escalation call executed",
+                        chars_sent=len(excerpt),
+                        local_score=local_score,
+                    )
+
+                if provider_result:
+                    confidence = _score_to_confidence(provider_result.score, self.config)
+                    return _finalize_result(
+                        source_path,
+                        provider_result,
+                        confidence,
+                        self.categories,
+                        text,
+                        api_used=provider.is_external,
+                        reasoning_provider=provider.provider_id,
+                    )
+
         if local_result:
             tier = local_result
         elif keyword_result:
@@ -236,7 +290,10 @@ class ClassificationEngine:
                 method="fallback",
                 reason="No keyword or embedding match",
             )
-        return _finalize_result(source_path, tier, "low", self.categories, text)
+        return _finalize_result(
+            source_path, tier, "low", self.categories, text,
+            reasoning_provider="local",
+        )
 
     def classify_batch(self, documents: list[ExtractedDocument]) -> list[ClassificationResult]:
         return [self.classify_document(doc) for doc in documents]

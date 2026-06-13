@@ -46,6 +46,14 @@ categories:
       - MARKETING
       - capital markets summary
       - CAPITAL MARKETS SUMMARY
+      - boundary
+      - BOUNDARY
+      - acreage
+      - ACREAGE
+      - site boundary
+      - SITE BOUNDARY
+      - conceptual
+      - CONCEPTUAL
 
   - id: "02"
     folder: "02_Land_Control_and_PSA"
@@ -255,6 +263,14 @@ categories:
       - PHASING PLAN
       - mtg
       - MTG
+      - boundary
+      - BOUNDARY
+      - acreage
+      - ACREAGE
+      - site boundary
+      - SITE BOUNDARY
+      - conceptual
+      - CONCEPTUAL
 
   - id: "10"
     folder: "10_Power_Utility_AEP_SWEPCO"

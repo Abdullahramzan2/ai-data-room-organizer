@@ -19,6 +19,8 @@ input:
     - .txt
     - .msg
     - .eml
+    - .kmz
+    - .dwg
 
 ocr:
   enabled: true
@@ -56,12 +58,35 @@ classification:
   embedding_model: all-MiniLM-L6-v2
   llm_excerpt_chars: 3000
   top_candidates: 3
+  # Reasoning provider for Tier 3: auto | local | openai | ollama
+  reasoning_provider: auto
+
+# Guardrails — control external API usage and audit decisions
+guardrails:
+  # Allow external API calls (OpenAI). When false, only local + Ollama apply.
+  allow_external_api: true
+  # Max characters of extracted text sent to an external provider per file
+  max_external_chars: 3000
+  # Extensions that must never escalate to Tier 3 (always local-only)
+  local_only_extensions:
+    - .dwg
+    - .kmz
+  # Parent folder name fragments that force local-only (case-insensitive substring)
+  local_only_folders: []
+  # Only escalate when local combined score is below this threshold
+  escalation_confidence_threshold: 0.50
+  # Estimated max USD spend on external API calls per pipeline run (0 = unlimited)
+  max_api_cost_per_run_usd: 2.0
+  # Action when classification remains uncertain: needs_review
+  uncertain_action: needs_review
+  # Write audit log entries for every escalation decision
+  audit_log_enabled: true
+
+paths:
+  taxonomy_file: taxonomy/real_estate_development.yaml
+  cache_dir: output/.cache
 
 output:
   naming_mode: preserve
   manifest_file: manifest.csv
   review_queue_file: review_queue.csv
-
-paths:
-  taxonomy_file: taxonomy/real_estate_development.yaml
-  cache_dir: output/.cache

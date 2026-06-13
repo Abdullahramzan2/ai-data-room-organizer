@@ -129,6 +129,7 @@ def _document_from_ingestion_row(row: dict[str, Any]) -> ExtractedDocument:
         text_content=row.get("text_content", ""),
         ocr_text=row.get("ocr_text", ""),
         extraction_method=ExtractionMethod(row.get("extraction_method", "skipped")),
+        extra=row.get("extra") or {},
     )
 
 

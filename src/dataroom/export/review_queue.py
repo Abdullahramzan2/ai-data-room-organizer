@@ -29,7 +29,7 @@ def build_review_rows(manifest_rows: list[dict[str, str]]) -> list[dict[str, str
                 "assigned_folder": row["category_folder"],
                 "confidence": row["confidence"],
                 "score": row["score"],
-                "review_reason": row["review_reason"],
+                "review_reason": row.get("needs_review_reason") or row.get("review_reason", ""),
                 "classification_reason": row["classification_reason"],
                 "supporting_terms": row["supporting_terms"],
             }

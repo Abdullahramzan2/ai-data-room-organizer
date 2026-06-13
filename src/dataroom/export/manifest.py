@@ -16,18 +16,32 @@ MANIFEST_COLUMNS = [
     "score",
     "classification_method",
     "classification_reason",
+    "classification_basis",
     "supporting_terms",
     "entities",
     "needs_review",
-    "review_reason",
+    "needs_review_reason",
     "extraction_method",
     "char_count",
+    "file_type_handler",
+    "parse_status",
+    "extracted_geo_signals",
+    "extracted_cad_signals",
+    "reasoning_provider",
     "api_used",
 ]
 
 
 def _join_list(values: list[str] | None) -> str:
     return "|".join(values or [])
+
+
+def _extra_field(doc: dict[str, Any], key: str, default: str = "") -> str:
+    extra = doc.get("extra") or {}
+    val = extra.get(key, default)
+    if isinstance(val, list):
+        return _join_list(val)
+    return str(val) if val is not None else default
 
 
 def build_manifest_rows(
@@ -59,6 +73,9 @@ def build_manifest_rows(
             )
             output_path = str(output_dir / cls["category_folder"] / dest_name)
 
+        handler = _extra_field(doc, "file_type_handler", "standard")
+        parse_status = _extra_field(doc, "parse_status", "success" if doc.get("char_count") else "failed")
+
         rows.append(
             {
                 "file_name": doc["file_name"],
@@ -70,12 +87,18 @@ def build_manifest_rows(
                 "score": str(cls["score"]),
                 "classification_method": str(cls["method"]),
                 "classification_reason": str(cls.get("reason", "")),
+                "classification_basis": str(cls.get("classification_basis", "")),
                 "supporting_terms": _join_list(cls.get("supporting_terms")),
                 "entities": _join_list(cls.get("entities")),
                 "needs_review": str(bool(cls.get("needs_review", False))).lower(),
-                "review_reason": str(cls.get("review_reason") or ""),
+                "needs_review_reason": str(cls.get("review_reason") or ""),
                 "extraction_method": str(doc.get("extraction_method", "")),
                 "char_count": str(doc.get("char_count", 0)),
+                "file_type_handler": handler,
+                "parse_status": parse_status,
+                "extracted_geo_signals": _extra_field(doc, "extracted_geo_signals"),
+                "extracted_cad_signals": _extra_field(doc, "extracted_cad_signals"),
+                "reasoning_provider": str(cls.get("reasoning_provider") or ""),
                 "api_used": str(bool(cls.get("api_used", False))).lower(),
             }
         )

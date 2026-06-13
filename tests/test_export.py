@@ -45,5 +45,7 @@ def test_manifest_and_review_queue(tmp_path: Path):
     assert manifest[0]["file_name"] == "psa.txt"
     assert manifest[0]["needs_review"] == "true"
     assert manifest[0]["supporting_terms"] == "term"
+    assert manifest[0]["file_type_handler"] == "standard"
+    assert "classification_basis" in manifest[0]
     assert len(review) == 1
     assert review[0]["assigned_folder"] == "19_Unclassified_Review_Queue"
