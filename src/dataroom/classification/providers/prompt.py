@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from dataroom.classification.models import TaxonomyCategory
 
+CLASSIFICATION_SYSTEM_PROMPT = (
+    "You classify documents for a legal/real-estate data room. "
+    "Respond with valid JSON only."
+)
+
 
 def build_classification_prompt(
     file_name: str,

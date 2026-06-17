@@ -10,7 +10,11 @@ from typing import Any
 
 from dataroom.classification.models import ClassificationConfig, TaxonomyCategory, TierResult
 from dataroom.classification.providers.base import ReasoningProvider
-from dataroom.classification.providers.prompt import build_classification_prompt, confidence_to_score
+from dataroom.classification.providers.prompt import (
+    CLASSIFICATION_SYSTEM_PROMPT,
+    build_classification_prompt,
+)
+from dataroom.classification.providers.response import parse_classification_json
 from dataroom.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -65,13 +69,7 @@ class OllamaReasoningProvider(ReasoningProvider):
             {
                 "model": self.settings.ollama_model,
                 "messages": [
-                    {
-                        "role": "system",
-                        "content": (
-                            "You classify documents for a legal/real-estate data room. "
-                            "Respond with valid JSON only."
-                        ),
-                    },
+                    {"role": "system", "content": CLASSIFICATION_SYSTEM_PROMPT},
                     {"role": "user", "content": prompt},
                 ],
                 "stream": False,
@@ -89,24 +87,13 @@ class OllamaReasoningProvider(ReasoningProvider):
             with urllib.request.urlopen(req, timeout=120) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
             raw = body.get("message", {}).get("content", "{}")
-            data = json.loads(raw)
         except Exception as exc:
             logger.warning("Ollama classification failed for %s: %s", file_name, exc)
             return None
 
-        category_id = str(data.get("category_id", "")).strip()
-        cat = next((c for c in all_categories if c.id == category_id), None)
-        if cat is None:
-            return None
-
-        confidence = str(data.get("confidence", "low")).lower()
-        terms = [str(t) for t in data.get("supporting_terms", []) if t]
-
-        return TierResult(
-            category_id=cat.id,
-            category_folder=cat.folder,
-            score=confidence_to_score(confidence),
+        return parse_classification_json(
+            raw,
+            all_categories,
             method="ollama",
-            supporting_terms=terms,
-            reason=str(data.get("reason", "Classified via Ollama")),
+            default_reason="Classified via Ollama",
         )

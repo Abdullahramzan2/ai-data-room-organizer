@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
@@ -10,7 +9,11 @@ from openai import OpenAI
 
 from dataroom.classification.models import ClassificationConfig, TaxonomyCategory, TierResult
 from dataroom.classification.providers.base import ReasoningProvider
-from dataroom.classification.providers.prompt import build_classification_prompt, confidence_to_score
+from dataroom.classification.providers.prompt import (
+    CLASSIFICATION_SYSTEM_PROMPT,
+    build_classification_prompt,
+)
+from dataroom.classification.providers.response import parse_classification_json
 from dataroom.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -58,37 +61,20 @@ class OpenAIReasoningProvider(ReasoningProvider):
             response = client.chat.completions.create(
                 model=self.settings.openai_model,
                 messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You classify documents for a legal/real-estate data room. "
-                            "Respond with valid JSON only."
-                        ),
-                    },
+                    {"role": "system", "content": CLASSIFICATION_SYSTEM_PROMPT},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0,
                 response_format={"type": "json_object"},
             )
             raw = response.choices[0].message.content or "{}"
-            data = json.loads(raw)
         except Exception as exc:
             logger.warning("OpenAI classification failed for %s: %s", file_name, exc)
             return None
 
-        category_id = str(data.get("category_id", "")).strip()
-        cat = next((c for c in all_categories if c.id == category_id), None)
-        if cat is None:
-            return None
-
-        confidence = str(data.get("confidence", "low")).lower()
-        terms = [str(t) for t in data.get("supporting_terms", []) if t]
-
-        return TierResult(
-            category_id=cat.id,
-            category_folder=cat.folder,
-            score=confidence_to_score(confidence),
+        return parse_classification_json(
+            raw,
+            all_categories,
             method="openai",
-            supporting_terms=terms,
-            reason=str(data.get("reason", "Classified via OpenAI API")),
+            default_reason="Classified via OpenAI API",
         )
