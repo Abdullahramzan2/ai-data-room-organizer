@@ -58,8 +58,11 @@ classification:
   embedding_model: all-MiniLM-L6-v2
   llm_excerpt_chars: 3000
   top_candidates: 3
-  # Reasoning provider for Tier 3: auto | local | openai | ollama
+  # Reasoning provider for Tier 3: auto | local | openai | ollama | enterprise
   reasoning_provider: auto
+
+# Enterprise / private LLM (OpenAI-compatible API) — secrets in .env
+# ENTERPRISE_API_KEY, ENTERPRISE_BASE_URL, ENTERPRISE_MODEL, ENTERPRISE_TIMEOUT, ENTERPRISE_EXTRA_HEADERS
 
 # Guardrails — control external API usage and audit decisions
 guardrails:

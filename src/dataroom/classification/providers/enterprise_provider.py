@@ -1,4 +1,4 @@
-"""OpenAI reasoning provider."""
+"""Enterprise / private LLM reasoning provider (OpenAI-compatible API)."""
 
 from __future__ import annotations
 
@@ -13,19 +13,23 @@ from dataroom.classification.providers.openai_compatible import (
 from dataroom.settings import Settings
 
 
-def openai_compatible_config(settings: Settings) -> OpenAICompatibleConfig:
+def enterprise_compatible_config(settings: Settings) -> OpenAICompatibleConfig:
     return OpenAICompatibleConfig(
-        provider_id="openai",
-        api_key=settings.openai_api_key,
-        model=settings.openai_model,
-        default_reason="Classified via OpenAI API",
-        force_external=True,
+        provider_id="enterprise",
+        api_key=settings.enterprise_api_key,
+        base_url=settings.enterprise_base_url,
+        model=settings.enterprise_model,
+        timeout=settings.enterprise_timeout,
+        extra_headers=settings.enterprise_extra_headers,
+        default_reason="Classified via enterprise LLM",
     )
 
 
-class OpenAIReasoningProvider(ReasoningProvider):
+class EnterpriseReasoningProvider(ReasoningProvider):
+    """Aleph Alpha, vLLM, Azure OpenAI, and other OpenAI-compatible enterprise endpoints."""
+
     def __init__(self, settings: Settings):
-        self._inner = OpenAICompatibleProvider(openai_compatible_config(settings))
+        self._inner = OpenAICompatibleProvider(enterprise_compatible_config(settings))
 
     @property
     def provider_id(self) -> str:

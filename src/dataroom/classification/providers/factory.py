@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from dataroom.classification.providers.base import ReasoningProvider
+from dataroom.classification.providers.enterprise_provider import EnterpriseReasoningProvider
 from dataroom.classification.providers.local_provider import LocalReasoningProvider
 from dataroom.classification.providers.ollama_provider import OllamaReasoningProvider
 from dataroom.classification.providers.openai_provider import OpenAIReasoningProvider
@@ -18,7 +17,7 @@ def create_reasoning_provider(
     """
     Select reasoning provider from config.
 
-    Values: local | openai | ollama | auto
+    Values: local | openai | ollama | enterprise | auto
     """
     settings = settings or get_settings()
     name = (provider_name or "auto").strip().lower()
@@ -26,18 +25,26 @@ def create_reasoning_provider(
     if name == "local" or settings.classification_mode == "local":
         return LocalReasoningProvider()
 
+    if name == "enterprise":
+        return EnterpriseReasoningProvider(settings)
+
     if name == "openai":
         return OpenAIReasoningProvider(settings)
 
     if name == "ollama":
         return OllamaReasoningProvider(settings)
 
-    # auto: prefer OpenAI when key present, else Ollama if running, else local
-    if settings.openai_api_key and settings.classification_mode in {"hybrid", "api"}:
-        return OpenAIReasoningProvider(settings)
+    # auto: enterprise (if configured), then OpenAI, then Ollama, else local
+    if settings.classification_mode in {"hybrid", "api"}:
+        enterprise = EnterpriseReasoningProvider(settings)
+        if enterprise.is_available():
+            return enterprise
 
-    ollama = OllamaReasoningProvider(settings)
-    if ollama.is_available() and settings.classification_mode in {"hybrid", "api"}:
-        return ollama
+        if settings.openai_api_key:
+            return OpenAIReasoningProvider(settings)
+
+        ollama = OllamaReasoningProvider(settings)
+        if ollama.is_available():
+            return ollama
 
     return LocalReasoningProvider()
