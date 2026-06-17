@@ -18,5 +18,6 @@ def test_run_pipeline(tmp_path: Path):
     assert summary["organized"] == 1
     assert (output_dir / "manifest.csv").is_file()
     assert (output_dir / "review_queue.csv").is_file()
+    assert (output_dir / "errors_report.csv").is_file()
     assert (output_dir / "run_summary.json").is_file()
     assert (input_dir / "PSA_agreement.txt").is_file()

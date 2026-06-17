@@ -10,8 +10,9 @@ from typing import Any
 import click
 from tqdm import tqdm
 
-from dataroom.classification import ClassificationEngine, load_classification_config
+from dataroom.classification import ClassificationEngine
 from dataroom.classification.engine import default_cache_dir
+from dataroom.classification.runtime import build_classification_runtime
 from dataroom.config import load_app_config, load_taxonomy
 from dataroom.export import build_manifest_rows, write_manifest_csv, write_review_queue_csv
 from dataroom.organizer import organize_files
@@ -152,10 +153,17 @@ def _document_from_ingestion_row(row: dict[str, Any]) -> ExtractedDocument:
     default=None,
     help="Write classification results as JSON (default: print summary).",
 )
+@click.option(
+    "--output-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Optional output directory for audit log (same as pipeline run).",
+)
 def classify_cmd(
     ingestion_json: Path,
     config_path: Path | None,
     output_path: Path | None,
+    output_dir: Path | None,
 ) -> None:
     """Classify documents from a dataroom ingest JSON file."""
     config = load_app_config(config_path)
@@ -166,10 +174,17 @@ def classify_cmd(
         click.echo("No documents found in ingestion JSON.")
         return
 
+    settings, guardrails, reasoning_provider, classification_config = build_classification_runtime(
+        config,
+        output_dir=output_dir,
+    )
     engine = ClassificationEngine(
         load_taxonomy(config=config),
-        load_classification_config(config),
+        classification_config,
         cache_dir=default_cache_dir(config),
+        settings=settings,
+        reasoning_provider=reasoning_provider,
+        guardrails=guardrails,
     )
 
     results = []

@@ -46,21 +46,45 @@ def organize_files(
 
     for row in classifications:
         source = Path(row["source_path"])
+        category_folder = str(row["category_folder"])
+
         if not source.is_file():
+            organized.append(
+                OrganizeResult(
+                    source_path=source,
+                    dest_path=None,
+                    category_folder=category_folder,
+                    success=False,
+                    error="Source file not found",
+                )
+            )
             continue
 
-        category_folder = str(row["category_folder"])
         dest_name = build_dest_name(source, category_folder, rename=rename)
         dest_dir = output_dir / category_folder
         dest_dir.mkdir(parents=True, exist_ok=True)
         dest_path = _unique_dest_path(dest_dir, dest_name)
 
-        shutil.copy2(source, dest_path)
+        try:
+            shutil.copy2(source, dest_path)
+        except OSError as exc:
+            organized.append(
+                OrganizeResult(
+                    source_path=source,
+                    dest_path=None,
+                    category_folder=category_folder,
+                    success=False,
+                    error=str(exc),
+                )
+            )
+            continue
+
         organized.append(
             OrganizeResult(
                 source_path=source,
                 dest_path=dest_path,
                 category_folder=category_folder,
+                success=True,
             )
         )
 

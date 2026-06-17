@@ -2,17 +2,23 @@
 
 from __future__ import annotations
 
+from dataroom.classification.mode import tier3_enabled
 from dataroom.classification.providers.base import ReasoningProvider
-from dataroom.classification.providers.enterprise_provider import EnterpriseReasoningProvider
 from dataroom.classification.providers.local_provider import LocalReasoningProvider
-from dataroom.classification.providers.ollama_provider import OllamaReasoningProvider
-from dataroom.classification.providers.openai_provider import OpenAIReasoningProvider
+from dataroom.classification.providers.registry import (
+    DEFAULT_AUTO_PROVIDER_CHAIN,
+    DEFAULT_PROVIDER_REGISTRY,
+    ProviderRegistry,
+)
 from dataroom.settings import Settings, get_settings
 
 
 def create_reasoning_provider(
     provider_name: str,
     settings: Settings | None = None,
+    *,
+    auto_chain: list[str] | None = None,
+    registry: ProviderRegistry | None = None,
 ) -> ReasoningProvider:
     """
     Select reasoning provider from config.
@@ -20,31 +26,17 @@ def create_reasoning_provider(
     Values: local | openai | ollama | enterprise | auto
     """
     settings = settings or get_settings()
-    name = (provider_name or "auto").strip().lower()
+    registry = registry or DEFAULT_PROVIDER_REGISTRY
 
-    if name == "local" or settings.classification_mode == "local":
+    if not tier3_enabled(settings):
         return LocalReasoningProvider()
 
-    if name == "enterprise":
-        return EnterpriseReasoningProvider(settings)
+    name = (provider_name or "auto").strip().lower()
+    if name == "local":
+        return LocalReasoningProvider()
 
-    if name == "openai":
-        return OpenAIReasoningProvider(settings)
+    chain = auto_chain or DEFAULT_AUTO_PROVIDER_CHAIN
+    if name == "auto":
+        return registry.resolve_auto(settings, chain)
 
-    if name == "ollama":
-        return OllamaReasoningProvider(settings)
-
-    # auto: enterprise (if configured), then OpenAI, then Ollama, else local
-    if settings.classification_mode in {"hybrid", "api"}:
-        enterprise = EnterpriseReasoningProvider(settings)
-        if enterprise.is_available():
-            return enterprise
-
-        if settings.openai_api_key:
-            return OpenAIReasoningProvider(settings)
-
-        ollama = OllamaReasoningProvider(settings)
-        if ollama.is_available():
-            return ollama
-
-    return LocalReasoningProvider()
+    return registry.get(name, settings)

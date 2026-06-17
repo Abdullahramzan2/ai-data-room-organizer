@@ -4,6 +4,7 @@ from pathlib import Path
 
 from dataroom.guardrails import GuardrailsConfig, GuardrailsEnforcer
 from dataroom.ingestion.models import ExtractedDocument, FileMetadata
+from dataroom.settings import Settings
 
 
 def _doc(ext: str, name: str = "file") -> ExtractedDocument:
@@ -70,3 +71,30 @@ def test_max_external_chars_truncates():
     enforcer = GuardrailsEnforcer(cfg)
     excerpt = enforcer.prepare_excerpt("x" * 500, 3000)
     assert len(excerpt) == 100
+
+
+def test_provider_block_list():
+    cfg = GuardrailsConfig(provider_block_list=["openai"])
+    enforcer = GuardrailsEnforcer(cfg)
+    doc = _doc(".pdf")
+    allowed, reason = enforcer.can_escalate(doc, "openai", True, 0.2)
+    assert not allowed
+    assert "blocked" in reason.lower()
+
+
+def test_provider_allow_list():
+    cfg = GuardrailsConfig(provider_allow_list=["ollama"])
+    enforcer = GuardrailsEnforcer(cfg)
+    doc = _doc(".pdf")
+    allowed, reason = enforcer.can_escalate(doc, "openai", True, 0.2)
+    assert not allowed
+    assert "allow list" in reason.lower()
+
+
+def test_remote_ollama_treated_as_external():
+    from dataroom.classification.providers.ollama_provider import OllamaReasoningProvider
+
+    provider = OllamaReasoningProvider(
+        Settings(ollama_base_url="https://ollama.example.com")
+    )
+    assert provider.is_external is True

@@ -6,18 +6,23 @@ import json
 from pathlib import Path
 from typing import Any
 
-from dataroom.classification import ClassificationEngine, load_classification_config
+from dataroom.classification import ClassificationEngine
 from dataroom.classification.engine import default_cache_dir
-from dataroom.classification.providers.factory import create_reasoning_provider
+from dataroom.classification.runtime import build_classification_runtime
 from dataroom.config import load_app_config, load_taxonomy
-from dataroom.export import build_manifest_rows, write_manifest_csv, write_review_queue_csv
-from dataroom.guardrails import GuardrailsEnforcer, load_guardrails_config
+from dataroom.export import (
+    build_ingestion_error_rows,
+    build_manifest_rows,
+    build_organize_error_rows,
+    write_errors_report_csv,
+    write_manifest_csv,
+    write_review_queue_csv,
+)
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
 from dataroom.ingestion.pipeline import run_ingestion
 from dataroom.organizer import organize_files
 from dataroom.ocr.tesseract import OcrConfig
-from dataroom.settings import get_settings
 
 
 def _document_from_row(row: dict[str, Any]) -> ExtractedDocument:
@@ -51,7 +56,6 @@ def run_pipeline(
     ingest_cfg = config.get("ingestion", {})
     legacy_cfg = config.get("legacy_office", {})
     output_cfg = config.get("output", {})
-    class_cfg = config.get("classification", {})
 
     ocr_config = OcrConfig(
         enabled=not no_ocr and ocr_cfg.get("enabled", True),
@@ -67,13 +71,10 @@ def run_pipeline(
         conversion_timeout=legacy_cfg.get("conversion_timeout", 120),
     )
 
-    guardrails_config = load_guardrails_config(config)
-    guardrails = GuardrailsEnforcer(guardrails_config)
-    guardrails._audit_path = guardrails.resolve_audit_path(output_dir)
-
-    settings = get_settings()
-    provider_name = class_cfg.get("reasoning_provider") or settings.reasoning_provider
-    reasoning_provider = create_reasoning_provider(provider_name, settings)
+    settings, guardrails, reasoning_provider, classification_config = build_classification_runtime(
+        config,
+        output_dir=output_dir,
+    )
 
     ingestion_result = run_ingestion(
         input_dir,
@@ -89,7 +90,7 @@ def run_pipeline(
     taxonomy = load_taxonomy(config=config)
     engine = ClassificationEngine(
         taxonomy,
-        load_classification_config(config),
+        classification_config,
         cache_dir=default_cache_dir(config),
         settings=settings,
         reasoning_provider=reasoning_provider,
@@ -114,27 +115,41 @@ def run_pipeline(
         classification_results,
         output_dir,
         rename=rename,
+        organize_results=organized,
     )
     manifest_path = output_dir / output_cfg.get("manifest_file", "manifest.csv")
     review_path = output_dir / output_cfg.get("review_queue_file", "review_queue.csv")
+    errors_path = output_dir / output_cfg.get("errors_report_file", "errors_report.csv")
     write_manifest_csv(manifest_path, rows=manifest_rows)
     write_review_queue_csv(review_path, manifest_rows)
 
+    error_rows = build_ingestion_error_rows(
+        ingestion_result.skipped_files,
+        ingestion_result.failed_files,
+    )
+    error_rows.extend(build_organize_error_rows(organized))
+    write_errors_report_csv(errors_path, error_rows)
+
     api_used_count = sum(1 for r in classification_results if r.get("api_used"))
     review_count = sum(1 for r in manifest_rows if r.get("needs_review") == "true")
+    organized_success = sum(1 for r in organized if r.success)
 
     summary = {
         "input_dir": str(input_dir),
         "output_dir": str(output_dir),
         "processed": len(ingestion_docs),
-        "organized": len(organized),
+        "organized": organized_success,
+        "skipped_count": len(ingestion_result.skipped_files),
+        "ingestion_failed_count": len(ingestion_result.failed_files),
+        "organize_failed_count": sum(1 for r in organized if not r.success),
         "review_queue_count": review_count,
         "api_used_count": api_used_count,
         "reasoning_provider": reasoning_provider.provider_id,
-        "guardrails_external_api": guardrails_config.allow_external_api,
+        "guardrails_external_api": guardrails.config.allow_external_api,
         "audit_log": str(guardrails.resolve_audit_path(output_dir) or ""),
         "manifest": str(manifest_path),
         "review_queue": str(review_path),
+        "errors_report": str(errors_path),
     }
 
     summary_path = output_dir / "run_summary.json"

@@ -39,3 +39,12 @@ def test_rename_uses_standardized_name(tmp_path: Path):
     results = organize_files(rows, output_dir, MINI_TAXONOMY, rename=True)
 
     assert results[0].dest_path.name.startswith("unknown-date__Land_Control__report.pdf")
+
+
+def test_missing_source_recorded_as_failure(tmp_path: Path):
+    output_dir = tmp_path / "out"
+    rows = [{"source_path": str(tmp_path / "missing.pdf"), "category_folder": "02_Land_Control"}]
+    results = organize_files(rows, output_dir, MINI_TAXONOMY)
+    assert len(results) == 1
+    assert results[0].success is False
+    assert results[0].error == "Source file not found"

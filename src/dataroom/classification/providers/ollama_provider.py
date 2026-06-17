@@ -10,6 +10,7 @@ from typing import Any
 
 from dataroom.classification.models import ClassificationConfig, TaxonomyCategory, TierResult
 from dataroom.classification.providers.base import ReasoningProvider
+from dataroom.classification.providers.host_utils import is_trusted_local_host
 from dataroom.classification.providers.prompt import (
     CLASSIFICATION_SYSTEM_PROMPT,
     build_classification_prompt,
@@ -30,7 +31,7 @@ class OllamaReasoningProvider(ReasoningProvider):
 
     @property
     def is_external(self) -> bool:
-        return False
+        return not is_trusted_local_host(self.settings.ollama_base_url)
 
     def is_available(self) -> bool:
         return self._ping()

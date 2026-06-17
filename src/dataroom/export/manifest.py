@@ -6,6 +6,8 @@ import csv
 from pathlib import Path
 from typing import Any
 
+from dataroom.organizer.models import OrganizeResult
+
 MANIFEST_COLUMNS = [
     "file_name",
     "original_path",
@@ -29,6 +31,8 @@ MANIFEST_COLUMNS = [
     "extracted_cad_signals",
     "reasoning_provider",
     "api_used",
+    "organize_status",
+    "organize_error",
 ]
 
 
@@ -50,9 +54,13 @@ def build_manifest_rows(
     output_dir: Path | None = None,
     *,
     rename: bool = False,
+    organize_results: list[OrganizeResult] | None = None,
 ) -> list[dict[str, str]]:
-    """Merge ingestion + classification into manifest rows."""
+    """Merge ingestion + classification (+ optional organize results) into manifest rows."""
     by_path = {row["source_path"]: row for row in classification_results}
+    organize_by_path = {
+        str(result.source_path): result for result in (organize_results or [])
+    }
     rows: list[dict[str, str]] = []
 
     for doc in ingestion_docs:
@@ -62,8 +70,19 @@ def build_manifest_rows(
             continue
 
         source = Path(source_path)
+        organize = organize_by_path.get(source_path)
         output_path = ""
-        if output_dir is not None:
+        organize_status = "pending"
+        organize_error = ""
+
+        if organize is not None:
+            if organize.success and organize.dest_path is not None:
+                output_path = str(organize.dest_path)
+                organize_status = "copied"
+            else:
+                organize_status = "failed"
+                organize_error = organize.error or "Organize failed"
+        elif output_dir is not None:
             from dataroom.organizer.naming import build_dest_name
 
             dest_name = build_dest_name(
@@ -72,6 +91,7 @@ def build_manifest_rows(
                 rename=rename,
             )
             output_path = str(output_dir / cls["category_folder"] / dest_name)
+            organize_status = "planned"
 
         handler = _extra_field(doc, "file_type_handler", "standard")
         parse_status = _extra_field(doc, "parse_status", "success" if doc.get("char_count") else "failed")
@@ -100,6 +120,8 @@ def build_manifest_rows(
                 "extracted_cad_signals": _extra_field(doc, "extracted_cad_signals"),
                 "reasoning_provider": str(cls.get("reasoning_provider") or ""),
                 "api_used": str(bool(cls.get("api_used", False))).lower(),
+                "organize_status": organize_status,
+                "organize_error": organize_error,
             }
         )
 

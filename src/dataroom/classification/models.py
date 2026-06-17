@@ -29,6 +29,9 @@ class ClassificationConfig:
     embedding_model: str = "all-MiniLM-L6-v2"
     llm_excerpt_chars: int = 3000
     top_candidates: int = 3
+    auto_provider_chain: list[str] = field(
+        default_factory=lambda: ["enterprise", "openai", "ollama", "local"]
+    )
 
 
 @dataclass

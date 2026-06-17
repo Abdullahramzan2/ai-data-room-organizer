@@ -17,6 +17,11 @@ class GuardrailsConfig:
     uncertain_action: str = "needs_review"
     audit_log_enabled: bool = True
     audit_log_file: str = "output/audit_log.jsonl"
+    trusted_local_hosts: list[str] = field(
+        default_factory=lambda: ["localhost", "127.0.0.1", "::1"]
+    )
+    provider_allow_list: list[str] = field(default_factory=list)
+    provider_block_list: list[str] = field(default_factory=list)
 
 
 def load_guardrails_config(app_config: dict[str, Any] | None = None) -> GuardrailsConfig:
@@ -26,6 +31,9 @@ def load_guardrails_config(app_config: dict[str, Any] | None = None) -> Guardrai
         str(e).lower() if str(e).startswith(".") else f".{str(e).lower()}"
         for e in raw.get("local_only_extensions", [])
     ]
+    trusted_hosts = [str(h).lower() for h in raw.get("trusted_local_hosts", [])]
+    allow_list = [str(p).lower() for p in raw.get("provider_allow_list", [])]
+    block_list = [str(p).lower() for p in raw.get("provider_block_list", [])]
     return GuardrailsConfig(
         allow_external_api=bool(raw.get("allow_external_api", True)),
         max_external_chars=int(raw.get("max_external_chars", 3000)),
@@ -36,4 +44,7 @@ def load_guardrails_config(app_config: dict[str, Any] | None = None) -> Guardrai
         uncertain_action=str(raw.get("uncertain_action", "needs_review")),
         audit_log_enabled=bool(raw.get("audit_log_enabled", True)),
         audit_log_file=str(raw.get("audit_log_file", "output/audit_log.jsonl")),
+        trusted_local_hosts=trusted_hosts or ["localhost", "127.0.0.1", "::1"],
+        provider_allow_list=allow_list,
+        provider_block_list=block_list,
     )

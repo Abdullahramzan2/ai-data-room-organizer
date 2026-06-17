@@ -60,13 +60,19 @@ classification:
   top_candidates: 3
   # Reasoning provider for Tier 3: auto | local | openai | ollama | enterprise
   reasoning_provider: auto
+  # Provider priority when reasoning_provider=auto (first available wins)
+  auto_provider_chain:
+    - enterprise
+    - openai
+    - ollama
+    - local
 
 # Enterprise / private LLM (OpenAI-compatible API) — secrets in .env
 # ENTERPRISE_API_KEY, ENTERPRISE_BASE_URL, ENTERPRISE_MODEL, ENTERPRISE_TIMEOUT, ENTERPRISE_EXTRA_HEADERS
 
 # Guardrails — control external API usage and audit decisions
 guardrails:
-  # Allow external API calls (OpenAI). When false, only local + Ollama apply.
+  # Allow escalation to non-trusted-host endpoints. When false, only trusted-local providers apply.
   allow_external_api: true
   # Max characters of extracted text sent to an external provider per file
   max_external_chars: 3000
@@ -84,6 +90,14 @@ guardrails:
   uncertain_action: needs_review
   # Write audit log entries for every escalation decision
   audit_log_enabled: true
+  # Hostnames treated as local for external-call guardrails (Ollama on localhost, etc.)
+  trusted_local_hosts:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  # Optional provider filters (empty allow_list = all registered providers allowed)
+  provider_allow_list: []
+  provider_block_list: []
 
 paths:
   taxonomy_file: taxonomy/real_estate_development.yaml
@@ -93,3 +107,4 @@ output:
   naming_mode: preserve
   manifest_file: manifest.csv
   review_queue_file: review_queue.csv
+  errors_report_file: errors_report.csv

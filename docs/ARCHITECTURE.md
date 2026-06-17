@@ -211,10 +211,31 @@ flowchart TD
 
 **Tier 3 — LLM API escalation (optional)**
 
-- Invoked only when Tier 1 and Tier 2 produce low confidence.
+- Invoked only when Tier 1 and Tier 2 produce low confidence **and** `tier3_enabled(settings)` is true (`hybrid` or `api` mode).
+- `CLASSIFICATION_MODE=local` always uses `LocalReasoningProvider` and never calls Tier 3, regardless of `REASONING_PROVIDER`.
 - Sends **excerpt + metadata only** — never the full document file.
 - Typical payload: file name, extension, first N characters of extracted text, candidate categories with descriptions.
-- Requires `OPENAI_API_KEY` in `.env` and `CLASSIFICATION_MODE=hybrid` or `api`.
+- Requires a configured reasoning provider and `CLASSIFICATION_MODE=hybrid` or `api`.
+
+### Provider registry (Milestone 3)
+
+**Files:** `src/dataroom/classification/providers/registry.py`, `factory.py`
+
+| Provider | Class | Config |
+|----------|-------|--------|
+| `local` | `LocalReasoningProvider` | Always available |
+| `openai` | `OpenAIReasoningProvider` | `OPENAI_*` env vars |
+| `ollama` | `OllamaReasoningProvider` | `OLLAMA_*` env vars |
+| `enterprise` | `EnterpriseReasoningProvider` | `ENTERPRISE_*` env vars (OpenAI-compatible gateway) |
+| `auto` | First configured in chain | `classification.auto_provider_chain` in YAML |
+
+`create_reasoning_provider()` resolves explicit names via `ProviderRegistry`, or walks the auto chain until a provider is configured. Shared JSON response parsing lives in `providers/response.py`.
+
+**Guardrails** (`guardrails/config.py`, `guardrails/enforcer.py`): `trusted_local_hosts`, `provider_allow_list`, `provider_block_list`; remote Ollama/enterprise endpoints are external unless host is trusted.
+
+**Runtime** (`classification/runtime.py`): `build_classification_runtime()` wires settings, guardrails, and provider for both `dataroom run` and `dataroom classify`.
+
+**Error reporting** (`export/errors.py`): `errors_report.csv` aggregates ingestion skips/failures and organize failures; `manifest.csv` adds `organize_status` / `organize_error`.
 
 ### Confidence routing
 
@@ -260,8 +281,9 @@ No silent misclassification — uncertain files are always flagged or queued.
 | `ocr` | `enabled`, `language`, `pdf_dpi`, `min_native_text_chars`, `tesseract_cmd` |
 | `ingestion` | `max_text_chars`, `max_file_size_bytes` |
 | `legacy_office` | `libreoffice_cmd`, `enable_com`, `conversion_timeout` |
-| `classification` | `excerpt_chars`, `high_threshold`, `medium_threshold`, `embedding_model` |
-| `output` | `naming_mode`, `manifest_file`, `review_queue_file` |
+| `classification` | `excerpt_chars`, `high_threshold`, `medium_threshold`, `embedding_model`, `auto_provider_chain` |
+| `guardrails` | `allow_external_api`, `trusted_local_hosts`, `provider_allow_list`, `provider_block_list` |
+| `output` | `naming_mode`, `manifest_file`, `review_queue_file`, `errors_report_file` |
 | `paths` | `taxonomy_file`, `cache_dir` |
 
 ---

@@ -68,6 +68,13 @@ class GuardrailsEnforcer:
         if not self.should_escalate(local_score):
             return False, f"Local score {local_score:.2f} meets escalation threshold"
 
+        provider_key = provider_id.strip().lower()
+        if self.config.provider_block_list and provider_key in self.config.provider_block_list:
+            return False, f"Provider '{provider_id}' is blocked by guardrails"
+
+        if self.config.provider_allow_list and provider_key not in self.config.provider_allow_list:
+            return False, f"Provider '{provider_id}' is not in the allow list"
+
         if is_external and not self.config.allow_external_api:
             return False, "External API disabled in guardrails config"
 

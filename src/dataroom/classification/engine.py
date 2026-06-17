@@ -15,6 +15,7 @@ from dataroom.classification.models import (
     TaxonomyCategory,
     TierResult,
 )
+from dataroom.classification.mode import tier3_enabled
 from dataroom.classification.providers.base import ReasoningProvider
 from dataroom.classification.providers.factory import create_reasoning_provider
 from dataroom.classification.taxonomy import (
@@ -31,6 +32,11 @@ from dataroom.settings import Settings, get_settings
 
 def load_classification_config(app_config: dict[str, Any]) -> ClassificationConfig:
     raw = app_config.get("classification", {})
+    chain = raw.get("auto_provider_chain")
+    if chain is None:
+        auto_chain = ["enterprise", "openai", "ollama", "local"]
+    else:
+        auto_chain = [str(item).strip().lower() for item in chain if str(item).strip()]
     return ClassificationConfig(
         excerpt_chars=int(raw.get("excerpt_chars", 4000)),
         high_threshold=float(raw.get("high_threshold", 0.75)),
@@ -40,6 +46,7 @@ def load_classification_config(app_config: dict[str, Any]) -> ClassificationConf
         embedding_model=str(raw.get("embedding_model", "all-MiniLM-L6-v2")),
         llm_excerpt_chars=int(raw.get("llm_excerpt_chars", 3000)),
         top_candidates=int(raw.get("top_candidates", 3)),
+        auto_provider_chain=auto_chain or ["enterprise", "openai", "ollama", "local"],
     )
 
 
@@ -204,7 +211,7 @@ class ClassificationEngine:
         local_score = local_result.score if local_result else (keyword_result.score if keyword_result else None)
         provider = self._provider
 
-        if provider.provider_id != "local" and provider.is_available():
+        if tier3_enabled(self.settings) and provider.provider_id != "local" and provider.is_available():
             allowed = True
             block_reason = ""
             if self._guardrails is not None:
