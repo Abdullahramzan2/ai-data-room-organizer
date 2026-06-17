@@ -43,6 +43,26 @@ class ExtractedDocument:
     warnings: list[str] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
 
+    def __init__(
+        self,
+        metadata: FileMetadata,
+        text_content: str = "",
+        ocr_text: str = "",
+        extraction_method: ExtractionMethod = ExtractionMethod.SKIPPED,
+        ocr_applied: bool = False,
+        errors: list[str] | None = None,
+        warnings: list[str] | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        self.metadata = metadata
+        self.text_content = text_content
+        self.ocr_text = ocr_text
+        self.extraction_method = extraction_method
+        self.ocr_applied = ocr_applied
+        self.errors = errors if errors is not None else []
+        self.warnings = warnings if warnings is not None else []
+        self.extra = extra if extra is not None else {}
+
     @property
     def combined_text(self) -> str:
         """Full searchable text: native extraction plus OCR supplement."""

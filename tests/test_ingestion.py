@@ -57,6 +57,7 @@ def _minimal_xlsx() -> bytes:
     buf = BytesIO()
     wb = Workbook()
     ws = wb.active
+    assert ws is not None
     ws["A1"] = "USACE"
     ws["B1"] = "Section 404"
     wb.save(buf)

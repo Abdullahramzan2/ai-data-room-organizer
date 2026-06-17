@@ -28,11 +28,12 @@ def load_app_config(config_path: Path | None = None) -> dict[str, Any]:
 
 def load_taxonomy(taxonomy_path: Path | None = None, config: dict[str, Any] | None = None) -> dict[str, Any]:
     root = resolve_project_root()
-    if taxonomy_path is None:
+    resolved = taxonomy_path
+    if resolved is None:
         if config is None:
             config = load_app_config()
         rel = config.get("paths", {}).get("taxonomy_file", "taxonomy/real_estate_development.yaml")
-        taxonomy_path = root / rel
-    if not taxonomy_path.is_file():
-        raise FileNotFoundError(f"Taxonomy file not found: {taxonomy_path}")
-    return load_yaml(taxonomy_path)
+        resolved = root / rel
+    if not resolved.is_file():
+        raise FileNotFoundError(f"Taxonomy file not found: {resolved}")
+    return load_yaml(resolved)

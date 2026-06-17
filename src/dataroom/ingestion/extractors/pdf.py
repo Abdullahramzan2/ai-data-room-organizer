@@ -21,7 +21,9 @@ class PdfExtractor(BaseExtractor):
             with fitz.open(path) as pdf:
                 doc.metadata.page_count = pdf.page_count
                 for page in pdf:
-                    texts.append(page.get_text("text"))
+                    page_text = page.get_text("text")
+                    if isinstance(page_text, str):
+                        texts.append(page_text)
         except Exception as exc:
             doc.errors.append(f"PDF native extraction failed: {exc}")
             doc.extraction_method = ExtractionMethod.FAILED

@@ -13,7 +13,7 @@ def _make_docx(path: Path, text: str) -> Path:
     docx_path = path / "converted.docx"
     document = Document()
     document.add_paragraph(text)
-    document.save(docx_path)
+    document.save(str(docx_path))
     return docx_path
 
 
@@ -23,8 +23,10 @@ def _make_pptx(path: Path, text: str) -> Path:
     pptx_path = path / "converted.pptx"
     prs = Presentation()
     slide = prs.slides.add_slide(prs.slide_layouts[1])
-    slide.shapes.title.text = text
-    prs.save(pptx_path)
+    title = slide.shapes.title
+    assert title is not None
+    title.text = text
+    prs.save(str(pptx_path))
     return pptx_path
 
 

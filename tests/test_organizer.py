@@ -25,8 +25,10 @@ def test_copy_into_category_folder(tmp_path: Path):
     results = organize_files(rows, output_dir, MINI_TAXONOMY)
 
     assert len(results) == 1
-    assert results[0].dest_path == output_dir / "02_Land_Control" / "psa.txt"
-    assert results[0].dest_path.read_text(encoding="utf-8") == "purchase and sale"
+    dest = results[0].dest_path
+    assert dest is not None
+    assert dest == output_dir / "02_Land_Control" / "psa.txt"
+    assert dest.read_text(encoding="utf-8") == "purchase and sale"
     assert source.read_text(encoding="utf-8") == "purchase and sale"
 
 
@@ -38,7 +40,9 @@ def test_rename_uses_standardized_name(tmp_path: Path):
     rows = [{"source_path": str(source), "category_folder": "02_Land_Control"}]
     results = organize_files(rows, output_dir, MINI_TAXONOMY, rename=True)
 
-    assert results[0].dest_path.name.startswith("unknown-date__Land_Control__report.pdf")
+    dest = results[0].dest_path
+    assert dest is not None
+    assert dest.name.startswith("unknown-date__Land_Control__report.pdf")
 
 
 def test_missing_source_recorded_as_failure(tmp_path: Path):

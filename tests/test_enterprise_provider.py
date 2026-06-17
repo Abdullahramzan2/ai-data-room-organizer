@@ -1,5 +1,6 @@
 """Tests for enterprise and OpenAI-compatible reasoning providers."""
 
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 from dataroom.classification.models import ClassificationConfig, TaxonomyCategory
@@ -18,8 +19,8 @@ CATEGORIES = [
 ]
 
 
-def _enterprise_settings(**overrides) -> Settings:
-    base = dict(
+def _enterprise_settings(**overrides: Any) -> Settings:
+    base: dict[str, Any] = dict(
         classification_mode="hybrid",
         enterprise_api_key="ent-key",
         enterprise_base_url="https://api.aleph-alpha.com/v1",
@@ -28,7 +29,7 @@ def _enterprise_settings(**overrides) -> Settings:
         enterprise_extra_headers={"X-Tenant": "test"},
     )
     base.update(overrides)
-    return Settings(**base)
+    return Settings(**cast(Any, base))
 
 
 def test_enterprise_unavailable_without_config():

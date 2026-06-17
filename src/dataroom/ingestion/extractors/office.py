@@ -12,7 +12,7 @@ from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileM
 def read_docx_text(path: Path, max_chars: int) -> str:
     from docx import Document
 
-    document = Document(path)
+    document = Document(str(path))
     paragraphs = [p.text for p in document.paragraphs if p.text.strip()]
     text = "\n".join(paragraphs)
     return text[:max_chars]
@@ -21,13 +21,14 @@ def read_docx_text(path: Path, max_chars: int) -> str:
 def read_pptx_text(path: Path, max_chars: int) -> tuple[str, int | None]:
     from pptx import Presentation
 
-    prs = Presentation(path)
+    prs = Presentation(str(path))
     lines: list[str] = []
     for idx, slide in enumerate(prs.slides, start=1):
         lines.append(f"## Slide {idx}")
         for shape in slide.shapes:
-            if hasattr(shape, "text") and shape.text.strip():
-                lines.append(shape.text)
+            shape_text = getattr(shape, "text", "")
+            if isinstance(shape_text, str) and shape_text.strip():
+                lines.append(shape_text)
     text = "\n".join(lines)
     return text[:max_chars], len(prs.slides)
 
@@ -113,7 +114,7 @@ class XlsExtractor(BaseExtractor):
         try:
             import xlrd
 
-            book = xlrd.open_workbook(path)
+            book = xlrd.open_workbook(str(path))
             lines: list[str] = []
             for sheet in book.sheets():
                 lines.append(f"## Sheet: {sheet.name}")

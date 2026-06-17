@@ -105,7 +105,10 @@ class TesseractOcr:
     def ocr_image(self, image: Image.Image) -> str:
         if not self.is_available():
             raise RuntimeError("Tesseract OCR is not available on this system")
-        return self._pytesseract.image_to_string(image, lang=self.config.language)
+        pytesseract = self._pytesseract
+        if pytesseract is None:
+            raise RuntimeError("Tesseract OCR is not available on this system")
+        return pytesseract.image_to_string(image, lang=self.config.language)
 
     def ocr_image_path(self, path: Path) -> str:
         with Image.open(path) as img:

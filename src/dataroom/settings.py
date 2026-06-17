@@ -26,6 +26,36 @@ class Settings:
     enterprise_timeout: float = 120.0
     enterprise_extra_headers: dict[str, str] = field(default_factory=dict)
 
+    def __init__(
+        self,
+        classification_mode: str = "hybrid",
+        reasoning_provider: str = "auto",
+        openai_api_key: str | None = None,
+        openai_model: str = "gpt-4o-mini",
+        ollama_base_url: str = "http://localhost:11434",
+        ollama_model: str = "llama3.2",
+        enterprise_api_key: str | None = None,
+        enterprise_base_url: str | None = None,
+        enterprise_model: str = "",
+        enterprise_timeout: float = 120.0,
+        enterprise_extra_headers: dict[str, str] | None = None,
+    ) -> None:
+        object.__setattr__(self, "classification_mode", classification_mode)
+        object.__setattr__(self, "reasoning_provider", reasoning_provider)
+        object.__setattr__(self, "openai_api_key", openai_api_key)
+        object.__setattr__(self, "openai_model", openai_model)
+        object.__setattr__(self, "ollama_base_url", ollama_base_url)
+        object.__setattr__(self, "ollama_model", ollama_model)
+        object.__setattr__(self, "enterprise_api_key", enterprise_api_key)
+        object.__setattr__(self, "enterprise_base_url", enterprise_base_url)
+        object.__setattr__(self, "enterprise_model", enterprise_model)
+        object.__setattr__(self, "enterprise_timeout", enterprise_timeout)
+        object.__setattr__(
+            self,
+            "enterprise_extra_headers",
+            enterprise_extra_headers if enterprise_extra_headers is not None else {},
+        )
+
 
 def _parse_extra_headers(raw: str) -> dict[str, str]:
     if not raw.strip():

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import email
 from email import policy
+from email.message import EmailMessage
 from pathlib import Path
+from typing import Any
 
 from dataroom.ingestion.extractors.base import BaseExtractor
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
@@ -48,8 +50,10 @@ class MsgExtractor(BaseExtractor):
         try:
             import extract_msg
 
-            msg = extract_msg.Message(path)
-            msg.process()
+            msg = extract_msg.Message(str(path))
+            process = getattr(msg, "process", None)
+            if callable(process):
+                process()
             parts = [
                 f"From: {msg.sender or ''}",
                 f"To: {msg.to or ''}",
@@ -76,18 +80,33 @@ class MsgExtractor(BaseExtractor):
         return doc
 
 
-def _extract_body(message: email.message.Message) -> str:
+def _extract_body(message: EmailMessage) -> str:
     if message.is_multipart():
         chunks: list[str] = []
         for part in message.walk():
             content_type = part.get_content_type()
             if content_type == "text/plain":
                 try:
-                    chunks.append(part.get_content())
+                    content = _part_content(part)
+                    if content:
+                        chunks.append(content)
                 except Exception:
                     pass
         return "\n".join(chunks)
     try:
-        return message.get_content()
+        return _part_content(message)
     except Exception:
         return ""
+
+
+def _part_content(part: Any) -> str:
+    get_content = getattr(part, "get_content", None)
+    if callable(get_content):
+        content = get_content()
+        return content if isinstance(content, str) else str(content)
+    payload = part.get_payload(decode=True)
+    if isinstance(payload, bytes):
+        return payload.decode(part.get_content_charset() or "utf-8", errors="replace")
+    if isinstance(payload, str):
+        return payload
+    return ""
