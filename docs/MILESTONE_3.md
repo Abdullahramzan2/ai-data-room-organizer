@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Client** | Carl Quesinberry |
-| **Milestone** | Enterprise-ready provider architecture |
+| **Milestone** | Enterprise-ready provider architecture + calibration |
 | **Version** | 0.3.0 |
 | **Status** | Delivered |
 
@@ -11,7 +11,7 @@
 
 ## Overview
 
-Milestone 3 makes the classification platform **enterprise-ready**:
+Milestone 3 makes the classification platform **enterprise-ready** and documents how to **calibrate** it on real data:
 
 1. **Provider registry** — register and resolve reasoning providers via config
 2. **OpenAI-compatible enterprise provider** — Aleph Alpha, vLLM, Azure OpenAI, on-prem gateways
@@ -20,6 +20,39 @@ Milestone 3 makes the classification platform **enterprise-ready**:
 5. **Guardrails** — trusted local hosts, provider allow/block lists, remote endpoint detection
 6. **CLI / pipeline parity** — `dataroom classify` uses same guardrails and provider setup as `dataroom run`
 7. **Error reporting** — `errors_report.csv` for skipped/failed ingestion and organize failures
+8. **Calibration guide** — `docs/CALIBRATION.md` (thresholds, taxonomy tuning, review queue, KMZ example)
+
+---
+
+## Before / after (Carl sample data)
+
+Validated on `data/Sample Data` (19 files) with `CLASSIFICATION_MODE=hybrid` and Ollama as Tier 3 provider.
+
+| Metric | Earlier local-only baseline | Milestone 3 hybrid + Ollama |
+|--------|----------------------------|-----------------------------|
+| Files processed | 19 | 19 |
+| Organized successfully | 19 | 19 |
+| Review queue | 4 files | **2 files** |
+| Tier 3 (LLM) used | No | **Yes** — 2 files classified via Ollama |
+| External cloud API | No | No (`api_used_count: 0`; Ollama on localhost) |
+| Audit trail | Basic | `audit_log.jsonl` per escalation |
+| Failed/skipped reporting | Limited | `errors_report.csv` + manifest `organize_status` |
+
+**Calibration example — `BigPine_600Acre_Boundary.kmz`:**
+
+| | Before taxonomy tuning | After calibration |
+|--|------------------------|-------------------|
+| Placement | Review queue or weak match | `01_Project_Overview` |
+| Confidence | Low / uncertain | **High (0.95)** |
+| Method | Embedding guess | **Keyword** (`boundary`, `conceptual`) |
+| Change | — | Added `boundary`, `acreage`, `site boundary`, `conceptual` to taxonomy |
+
+**Ambiguous files handled by Ollama (Tier 3):**
+
+- `Data_Center_Reference_Architectures_-_100MW_Blueprint.pdf` → `11_BTM_Generation_BESS_and_Energy`
+- `RESO-20180925-21-CCR-East-Campus.pdf` → `04_Zoning_Land_Use_and_Local_Approvals`
+
+See `docs/CALIBRATION.md` for the full KMZ walkthrough and tuning workflow.
 
 ---
 
@@ -56,6 +89,15 @@ classification:
     - local
 ```
 
+Local Ollama example:
+
+```env
+CLASSIFICATION_MODE=hybrid
+REASONING_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
+```
+
 ---
 
 ## Guardrails
@@ -75,25 +117,38 @@ Remote Ollama URLs and enterprise gateways are treated as **external** unless th
 
 ---
 
-## New outputs
+## Outputs
 
 | File | Purpose |
 |------|---------|
+| `manifest.csv` | Full per-file record; includes `organize_status`, `organize_error`, `reasoning_provider` |
+| `review_queue.csv` | Subset flagged for human review |
 | `errors_report.csv` | Skipped ingestion, failed ingestion, failed organize |
-| `manifest.csv` | Added `organize_status`, `organize_error` columns |
-| `run_summary.json` | Added `skipped_count`, `ingestion_failed_count`, `organize_failed_count`, `errors_report` |
+| `audit_log.jsonl` | Tier 3 escalation decisions (provider, excerpt size, local score) |
+| `run_summary.json` | Run counts including `review_queue_count`, `errors_report` path |
 
 ---
 
 ## CLI
 
 ```powershell
-# Full pipeline (unchanged)
+# Full pipeline (recommended)
 dataroom run "C:\path\to\folder" --output-dir output\data_room
 
 # Classify with same guardrails/audit as pipeline
 dataroom classify output\ingestion.json --output-dir output\data_room --output output\classification.json
 ```
+
+---
+
+## Calibration
+
+See **`docs/CALIBRATION.md`** for:
+
+- Confidence thresholds in `config/default.yaml`
+- Editing taxonomy keywords and rerunning
+- Using `review_queue.csv`
+- Boundary KMZ before/after example
 
 ---
 
@@ -108,6 +163,7 @@ dataroom classify output\ingestion.json --output-dir output\data_room --output o
 | `CLASSIFICATION_MODE=local` blocks Tier 3 | Yes |
 | `dataroom classify` matches pipeline guardrails | Yes |
 | Ingestion/organize failures in `errors_report.csv` | Yes |
+| Calibration guide (`docs/CALIBRATION.md`) | Yes |
 | Tests + architecture docs updated | Yes |
 
 ---

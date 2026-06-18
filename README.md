@@ -132,6 +132,7 @@ src/dataroom/
 docs/MILESTONE_1.md
 docs/MILESTONE_2.md
 docs/MILESTONE_3.md
+docs/CALIBRATION.md
 docs/ARCHITECTURE.md
 tests/
 ```
