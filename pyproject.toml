@@ -40,6 +40,7 @@ ui = ["streamlit>=1.40.0", "pandas>=2.0.0"]
 [project.scripts]
 dataroom = "dataroom.cli:main"
 dataroom-ui = "dataroom.ui.launch:main"
+dataroom-download-models = "dataroom.models_setup:download_all_models_cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]

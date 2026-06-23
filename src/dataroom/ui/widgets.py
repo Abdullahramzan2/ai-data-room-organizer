@@ -19,11 +19,22 @@ def folder_path_field(
     state_key: str,
     *,
     sidebar: bool = False,
+    stacked: bool = False,
 ) -> None:
     """Text field plus Browse button bound to ``st.session_state[state_key]``."""
     _apply_pending_folder_pick(state_key)
 
     ui = st.sidebar if sidebar else st
+    if stacked or sidebar:
+        ui.text_input(label, key=state_key)
+        if ui.button("Browse…", key=f"browse_{state_key}", use_container_width=True):
+            current = str(st.session_state.get(state_key, "") or "")
+            picked = browse_folder(current, title=f"Select {label.lower()}")
+            if picked:
+                st.session_state[f"_browse_pick_{state_key}"] = picked
+                st.rerun()
+        return
+
     path_col, btn_col = ui.columns([5, 1], vertical_alignment="bottom")
     with path_col:
         ui.text_input(label, key=state_key)

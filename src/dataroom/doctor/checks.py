@@ -189,8 +189,8 @@ def _check_embedding_model(model_name: str) -> CheckResult:
             status="fail",
             message=f"Could not load embedding model '{model_name}': {exc}",
             fix=(
-                "Check classification.embedding_model in config/default.yaml and network access "
-                "for the first Hugging Face download."
+                "Run: dataroom download-models "
+                "(or check classification.embedding_model in config/default.yaml and network access)."
             ),
         )
 

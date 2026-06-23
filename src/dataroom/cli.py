@@ -415,6 +415,32 @@ def doctor_cmd(config_path: Path | None, as_json: bool) -> None:
         raise SystemExit(1)
 
 
+@main.command("download-models")
+@click.option(
+    "--model",
+    "model_name",
+    default=None,
+    help="Embedding model name (default: from config/default.yaml).",
+)
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+)
+def download_models_cmd(model_name: str | None, config_path: Path | None) -> None:
+    """Pre-download the classification embedding model (also runs after pip install -e .)."""
+    from dataroom.models_setup import DEFAULT_EMBEDDING_MODEL, download_embedding_model
+
+    if model_name:
+        target = model_name
+    else:
+        config = load_app_config(config_path)
+        target = str(config.get("classification", {}).get("embedding_model", DEFAULT_EMBEDDING_MODEL))
+    download_embedding_model(target)
+    click.echo(f"Embedding model ready: {target}")
+
+
 @main.command("ui")
 @click.option("--port", default=8501, show_default=True, help="Streamlit server port.")
 def ui_cmd(port: int) -> None:

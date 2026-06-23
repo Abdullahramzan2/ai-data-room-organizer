@@ -1,8 +1,8 @@
 # AI-Assisted Data Room File Organizer
 
-Local tool to ingest, classify, and organize large document batches into a data-room folder structure.
+Local tool to ingest, classify, and organize large document batches into a data-room folder structure. Original source files are never modified.
 
-**Milestone 3 (v0.3.0)** — enterprise-ready provider plug-ins, hardened guardrails, and error reporting. See `docs/MILESTONE_3.md`. Earlier milestones: `docs/MILESTONE_1.md`, `docs/MILESTONE_2.md`.
+**Current release: v0.3.0** — see `docs/MILESTONE_3.md` (earlier: `docs/MILESTONE_1.md`, `docs/MILESTONE_2.md`).
 
 ## Requirements
 
@@ -12,48 +12,73 @@ Local tool to ingest, classify, and organize large document batches into a data-
 - [LibreOffice](https://www.libreoffice.org/) for legacy `.doc` / `.ppt` (recommended)
 - Optional: [Ollama](https://ollama.com/) for local Tier 3 LLM escalation
 
-### System dependencies (Windows)
-
-Install Tesseract and Poppler before running OCR on PNGs or scanned PDFs. The app auto-detects common install paths; restart your terminal after installing so `PATH` updates.
+### Windows system tools
 
 ```powershell
 winget install --id UB-Mannheim.TesseractOCR --accept-package-agreements --accept-source-agreements
 winget install --id oschwartz10612.Poppler --accept-package-agreements --accept-source-agreements
-```
-
-Verify:
-
-```powershell
 tesseract --version
 pdftoppm -h
 ```
 
-Optional overrides in `config/default.yaml`: `ocr.tesseract_cmd`, `ocr.poppler_path`.
+Restart the terminal after installing so `PATH` updates. Optional overrides: `ocr.tesseract_cmd` and `ocr.poppler_path` in `config/default.yaml`.
 
 ## Installation
 
+From the project root:
+
 ```powershell
-cd "AI-Assisted Data Room File Organizer"
 python -m venv .venv
 .venv\Scripts\activate
-pip install -r requirements.txt
-pip install -e .
+pip install -e ".[ui]"
+dataroom download-models
 copy .env.example .env
+dataroom doctor
 ```
+
+`pip install -e ".[ui]"` installs the CLI, Streamlit UI, and all Python dependencies from `pyproject.toml`. Use `pip install -e ".[ui,dev]"` if you also need pytest.
+
+`dataroom download-models` fetches the embedding model (`all-MiniLM-L6-v2`, ~90 MB) once so the first pipeline run does not wait on Hugging Face. If you skip it, the model downloads automatically on the first `dataroom run`.
 
 ## Quick start
 
-```powershell
-# Full pipeline — one command
-dataroom run "C:\path\to\master\folder" --output-dir output\data_room
+### CLI
 
-# List taxonomy categories
-dataroom taxonomy
+```powershell
+dataroom run "C:\path\to\master\folder" --output-dir output\data_room
 ```
 
-**Output:** taxonomy subfolders `00`–`19`, `manifest.csv`, `review_queue.csv`, `errors_report.csv`, `audit_log.jsonl`, `run_summary.json`. Source files are never modified.
+### UI
 
-### Step-by-step (optional, for debugging)
+```powershell
+dataroom ui
+```
+
+The UI runs the same pipeline in a background subprocess, with folder browse buttons for input/output, review editing, doctor checks, and output browsing.
+
+### Other commands
+
+```powershell
+dataroom doctor      # environment health check
+dataroom taxonomy    # list loaded categories
+dataroom rerun output\data_room   # after review_queue.csv corrections
+```
+
+### Pipeline output
+
+Taxonomy subfolders `00`–`19`, plus:
+
+`manifest.csv`, `manifest.xlsx`, `index.html`, `review_queue.csv`, `duplicate_report.csv`, `errors_report.csv`, `audit_log.jsonl`, `run_summary.json`
+
+### Rerun after review
+
+Set `corrected_folder` in `review_queue.csv`, then:
+
+```powershell
+dataroom rerun output\data_room
+```
+
+### Step-by-step (debugging)
 
 ```powershell
 dataroom ingest ".\my_folder" --output output\ingestion.json
@@ -105,8 +130,6 @@ ENTERPRISE_BASE_URL=https://your-gateway/v1
 ENTERPRISE_MODEL=your-model-name
 ```
 
-Auto chain order is configurable in `config/default.yaml` under `classification.auto_provider_chain`.
-
 ## Classification pipeline
 
 1. **Tier 1** — keyword / filename match against taxonomy YAML
@@ -114,28 +137,6 @@ Auto chain order is configurable in `config/default.yaml` under `classification.
 3. **Tier 3** — optional LLM (OpenAI, Ollama, or enterprise) when local confidence is low
 
 Guardrails in `config/default.yaml` control excerpt limits, local-only file types (`.dwg`, `.kmz`), provider allow/block lists, and audit logging.
-
-## Project layout
-
-```
-config/default.yaml
-taxonomy/real_estate_development.yaml
-src/dataroom/
-  ingestion/        # scan, extract, OCR, KMZ/DWG handlers
-  classification/   # keyword, embeddings, provider registry
-  guardrails/       # escalation policy + audit log
-  organizer/        # copy to taxonomy folders
-  export/           # manifest, review queue, errors report
-  pipeline/         # dataroom run orchestration
-  settings.py       # .env-backed settings
-  cli.py
-docs/MILESTONE_1.md
-docs/MILESTONE_2.md
-docs/MILESTONE_3.md
-docs/CALIBRATION.md
-docs/ARCHITECTURE.md
-tests/
-```
 
 ## Supported file types
 
@@ -151,11 +152,30 @@ tests/
 
 ## Taxonomy
 
-Edit `taxonomy/real_estate_development.yaml` to change folders, descriptions, and keywords. Swap the YAML file to support other domains (legal, PM, etc.) without code changes.
+Edit `taxonomy/real_estate_development.yaml` to change folders, descriptions, and keywords. Point `config/default.yaml` at a different YAML file to support other domains without code changes.
+
+## Project layout
+
+```
+config/default.yaml
+taxonomy/real_estate_development.yaml
+src/dataroom/
+  ingestion/        # scan, extract, OCR, KMZ/DWG handlers
+  classification/   # keyword, embeddings, provider registry
+  guardrails/       # escalation policy + audit log
+  organizer/        # copy to taxonomy folders
+  export/           # manifest, review queue, HTML index, duplicates
+  pipeline/         # dataroom run orchestration
+  ui/               # Streamlit UI
+  cli.py
+docs/
+tests/
+```
 
 ## Tests
 
 ```powershell
+pip install -e ".[ui,dev]"
 pytest -v
 ```
 

@@ -16,6 +16,7 @@ from dataroom.ui.helpers import (
     review_queue_path,
     taxonomy_folder_names,
 )
+from dataroom.ui.summary_display import display_run_summary
 from dataroom.ui.widgets import folder_path_field
 
 st.set_page_config(
@@ -27,26 +28,24 @@ st.set_page_config(
 
 def _init_session_state() -> None:
     root = resolve_project_root()
-    if "config_path" not in st.session_state:
-        st.session_state.config_path = str(default_config_path())
     if "output_dir" not in st.session_state:
         st.session_state.output_dir = str(root / "output")
     if "input_dir" not in st.session_state:
         st.session_state.input_dir = str(root / "data")
 
 
-def _config_path() -> Path | None:
-    raw = st.session_state.get("config_path", "").strip()
-    if not raw:
-        return None
-    path = Path(raw)
-    return path if path.is_file() else None
+def _config_path() -> Path:
+    return default_config_path()
 
 
 def _sidebar() -> str:
     st.sidebar.title("Data Room Organizer")
-    st.sidebar.text_input("Config YAML", key="config_path")
-    folder_path_field("Output directory", "output_dir", sidebar=True)
+    st.sidebar.caption("Config")
+    st.sidebar.code(str(_config_path()), language=None)
+
+    folder_path_field("Input folder", "input_dir", sidebar=True, stacked=True)
+    folder_path_field("Output directory", "output_dir", sidebar=True, stacked=True)
+
     return st.sidebar.radio(
         "Navigation",
         ["Run", "Review", "Taxonomy", "Doctor", "Outputs"],
@@ -58,7 +57,6 @@ def _page_run() -> None:
     st.header("Run pipeline")
     st.caption("Ingest, classify, organize, and export in one step. Original files are never modified.")
 
-    folder_path_field("Input folder", "input_dir")
     col1, col2, col3 = st.columns(3)
     with col1:
         rename = st.checkbox("Rename files", value=False)
@@ -97,17 +95,12 @@ def _page_run() -> None:
                 st.error(f"Pipeline failed: {exc}")
                 return
 
-        summary = result.summary
         if result.log:
             with st.expander("Process log"):
                 st.code(result.log)
 
-        st.success(
-            f"Processed {summary['processed']} file(s); "
-            f"organized {summary['organized']}; "
-            f"{summary['review_queue_count']} in review queue."
-        )
-        st.json(summary)
+        st.success("Pipeline completed successfully.")
+        display_run_summary(result.summary)
 
 
 def _page_review() -> None:
@@ -179,20 +172,18 @@ def _page_review() -> None:
                 except Exception as exc:
                     st.error(f"Rerun failed: {exc}")
                     return
-            summary = result.summary
             if result.log:
                 with st.expander("Process log"):
                     st.code(result.log)
-            st.success(f"Applied {summary['corrections_applied']} correction(s).")
-            for warning in summary.get("correction_warnings", []):
+            for warning in result.summary.get("correction_warnings", []):
                 st.warning(warning)
-            st.json(summary)
+            st.success("Rerun completed.")
+            display_run_summary(result.summary, title="Rerun summary")
 
 
 def _page_taxonomy() -> None:
     st.header("Taxonomy")
-    config_path = _config_path()
-    taxonomy = load_taxonomy(config=load_app_config(config_path))
+    taxonomy = load_taxonomy(config=load_app_config(_config_path()))
 
     st.subheader(f"{taxonomy.get('name', 'taxonomy')} (v{taxonomy.get('version', '?')})")
     st.write(taxonomy.get("description", ""))
@@ -228,15 +219,14 @@ def _page_doctor() -> None:
         else:
             st.success("No blocking failures detected.")
 
-        with st.expander("JSON report"):
+        with st.expander("Technical details (JSON)"):
             st.json(report.to_dict())
 
 
 def _page_outputs() -> None:
     st.header("Outputs")
     output_dir = Path(st.session_state.output_dir)
-    config_path = _config_path()
-    config = load_app_config(config_path)
+    config = load_app_config(_config_path())
 
     if not output_dir.is_dir():
         st.warning(f"Output directory not found: {output_dir}")
@@ -244,16 +234,7 @@ def _page_outputs() -> None:
 
     summary = load_run_summary(output_dir)
     if summary:
-        metrics = {
-            "processed": summary.get("processed"),
-            "organized": summary.get("organized"),
-            "review_queue_count": summary.get("review_queue_count"),
-            "duplicate_pair_count": summary.get("duplicate_pair_count"),
-            "api_used_count": summary.get("api_used_count"),
-            "rerun": summary.get("rerun", False),
-            "corrections_applied": summary.get("corrections_applied", 0),
-        }
-        st.json(metrics)
+        display_run_summary(summary)
     else:
         st.info("No run_summary.json yet. Run the pipeline first.")
 

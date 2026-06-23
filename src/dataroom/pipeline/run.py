@@ -58,6 +58,10 @@ def run_pipeline(
 ) -> dict[str, Any]:
     """Run full data room pipeline. Original source files are never modified."""
     config = load_app_config(config_path)
+    class_cfg = config.get("classification", {})
+    from dataroom.models_setup import DEFAULT_EMBEDDING_MODEL, ensure_embedding_model
+
+    ensure_embedding_model(str(class_cfg.get("embedding_model", DEFAULT_EMBEDDING_MODEL)))
     input_cfg = config.get("input", {})
     ocr_cfg = config.get("ocr", {})
     ingest_cfg = config.get("ingestion", {})
