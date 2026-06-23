@@ -10,6 +10,7 @@ from dataroom.classification import ClassificationEngine
 from dataroom.classification.engine import default_cache_dir
 from dataroom.classification.runtime import build_classification_runtime
 from dataroom.config import load_app_config, load_taxonomy
+from dataroom.duplicates import detect_duplicates, load_duplicate_config, write_duplicate_report_csv
 from dataroom.export import (
     build_ingestion_error_rows,
     build_manifest_rows,
@@ -72,6 +73,7 @@ def run_pipeline(
     ingest_cfg = config.get("ingestion", {})
     legacy_cfg = config.get("legacy_office", {})
     output_cfg = config.get("output", {})
+    duplicate_config = load_duplicate_config(config)
 
     ocr_config = OcrConfig(
         enabled=not no_ocr and ocr_cfg.get("enabled", True),
@@ -103,6 +105,7 @@ def run_pipeline(
     )
     ingestion_docs = [d.to_dict() for d in ingestion_result.documents]
     _attach_file_hashes(ingestion_docs)
+    duplicate_pairs = detect_duplicates(ingestion_docs, duplicate_config)
 
     taxonomy = load_taxonomy(config=config)
     engine = ClassificationEngine(
@@ -160,8 +163,10 @@ def run_pipeline(
     manifest_path = output_dir / output_cfg.get("manifest_file", "manifest.csv")
     review_path = output_dir / output_cfg.get("review_queue_file", "review_queue.csv")
     errors_path = output_dir / output_cfg.get("errors_report_file", "errors_report.csv")
+    duplicate_path = output_dir / output_cfg.get("duplicate_report_file", "duplicate_report.csv")
     write_manifest_csv(manifest_path, rows=manifest_rows)
     write_review_queue_csv(review_path, manifest_rows)
+    write_duplicate_report_csv(duplicate_path, duplicate_pairs)
 
     error_rows = build_ingestion_error_rows(
         ingestion_result.skipped_files,
@@ -190,6 +195,8 @@ def run_pipeline(
         "manifest": str(manifest_path),
         "review_queue": str(review_path),
         "errors_report": str(errors_path),
+        "duplicate_report": str(duplicate_path),
+        "duplicate_pair_count": len(duplicate_pairs),
         "ingestion_cache": str(ingestion_cache_path) if persist_cache else "",
         "classification_cache": str(classification_cache_path) if persist_cache else "",
         "persist_ingestion_cache": persist_cache,

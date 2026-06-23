@@ -24,6 +24,7 @@ def test_run_pipeline(tmp_path: Path):
     assert (output_dir / "run_summary.json").is_file()
     assert (output_dir / "ingestion_cache.json").is_file()
     assert (output_dir / "classification_cache.json").is_file()
+    assert (output_dir / "duplicate_report.csv").is_file()
     assert (input_dir / "PSA_agreement.txt").is_file()
 
     ingestion_cache = json.loads((output_dir / "ingestion_cache.json").read_text(encoding="utf-8"))
@@ -40,3 +41,5 @@ def test_run_pipeline(tmp_path: Path):
     assert summary["persist_ingestion_cache"] is True
     assert summary["ingestion_cache"].endswith("ingestion_cache.json")
     assert summary["classification_cache"].endswith("classification_cache.json")
+    assert summary["duplicate_report"].endswith("duplicate_report.csv")
+    assert summary["duplicate_pair_count"] == 0
