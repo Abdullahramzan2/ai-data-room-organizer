@@ -34,9 +34,11 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0"]
 windows = ["pywin32>=306"]
+ui = ["streamlit>=1.40.0", "pandas>=2.0.0"]
 
 [project.scripts]
 dataroom = "dataroom.cli:main"
+dataroom-ui = "dataroom.ui.launch:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

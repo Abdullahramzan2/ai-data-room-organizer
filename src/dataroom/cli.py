@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -412,6 +413,28 @@ def doctor_cmd(config_path: Path | None, as_json: bool) -> None:
         click.echo(format_doctor_report(report))
     if report.has_failures:
         raise SystemExit(1)
+
+
+@main.command("ui")
+@click.option("--port", default=8501, show_default=True, help="Streamlit server port.")
+def ui_cmd(port: int) -> None:
+    """Launch the optional Streamlit UI (requires pip install -e \".[ui]\")."""
+    try:
+        import streamlit.web.cli as stcli
+    except ImportError as exc:
+        raise click.ClickException('Install UI support: pip install -e ".[ui]"') from exc
+
+    app_path = Path(__file__).resolve().parent / "ui" / "app.py"
+    sys.argv = [
+        "streamlit",
+        "run",
+        str(app_path),
+        "--server.port",
+        str(port),
+        "--server.headless",
+        "true",
+    ]
+    stcli.main()
 
 
 @main.command("taxonomy")
