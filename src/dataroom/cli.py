@@ -22,7 +22,8 @@ from dataroom.export import (
     write_review_queue_csv,
 )
 from dataroom.organizer import organize_files
-from dataroom.pipeline import run_pipeline
+from dataroom.pipeline import run_pipeline, run_rerun
+from dataroom.pipeline.rerun import RerunError
 from dataroom.doctor import run_doctor
 from dataroom.doctor.checks import format_doctor_report
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
@@ -295,6 +296,38 @@ def run_cmd(
     click.echo(f"Organized {summary['organized']} file(s) -> {summary['output_dir']}")
     click.echo(f"Manifest: {summary['manifest']}")
     click.echo(f"Review queue: {summary['review_queue']} ({summary['review_queue_count']} flagged)")
+    click.echo(f"Summary: {output_dir / 'run_summary.json'}")
+
+
+@main.command("rerun")
+@click.argument(
+    "output_dir",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+)
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to application config YAML.",
+)
+@click.option("--rename", is_flag=True, help="Use standardized destination file names.")
+def rerun_cmd(
+    output_dir: Path,
+    config_path: Path | None,
+    rename: bool,
+) -> None:
+    """Re-organize from cached ingestion/classification after review-queue corrections."""
+    try:
+        summary = run_rerun(output_dir, config_path=config_path, rename=rename)
+    except RerunError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"Rerun complete — {summary['corrections_applied']} correction(s) applied")
+    click.echo(f"Organized {summary['organized']} file(s) -> {summary['output_dir']}")
+    click.echo(f"Review queue: {summary['review_queue']} ({summary['review_queue_count']} flagged)")
+    for warning in summary.get("correction_warnings", []):
+        click.echo(f"Warning: {warning}")
     click.echo(f"Summary: {output_dir / 'run_summary.json'}")
 
 

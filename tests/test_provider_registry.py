@@ -1,6 +1,9 @@
 """Tests for provider registry."""
 
+from unittest.mock import patch
+
 from dataroom.classification.providers.local_provider import LocalReasoningProvider
+from dataroom.classification.providers.ollama_provider import OllamaReasoningProvider
 from dataroom.classification.providers.openai_provider import OpenAIReasoningProvider
 from dataroom.classification.providers.registry import (
     DEFAULT_AUTO_PROVIDER_CHAIN,
@@ -37,8 +40,9 @@ def test_registry_resolve_auto_custom_chain():
 
 def test_registry_resolve_auto_falls_back_to_local():
     registry = build_default_registry()
-    provider = registry.resolve_auto(
-        Settings(classification_mode="hybrid"),
-        DEFAULT_AUTO_PROVIDER_CHAIN,
-    )
+    with patch.object(OllamaReasoningProvider, "is_available", return_value=False):
+        provider = registry.resolve_auto(
+            Settings(classification_mode="hybrid"),
+            DEFAULT_AUTO_PROVIDER_CHAIN,
+        )
     assert isinstance(provider, LocalReasoningProvider)

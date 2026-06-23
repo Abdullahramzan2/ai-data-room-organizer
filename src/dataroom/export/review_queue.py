@@ -14,6 +14,7 @@ REVIEW_COLUMNS = [
     "review_reason",
     "classification_reason",
     "supporting_terms",
+    "corrected_folder",
 ]
 
 
@@ -32,6 +33,7 @@ def build_review_rows(manifest_rows: list[dict[str, str]]) -> list[dict[str, str
                 "review_reason": row.get("needs_review_reason") or row.get("review_reason", ""),
                 "classification_reason": row["classification_reason"],
                 "supporting_terms": row["supporting_terms"],
+                "corrected_folder": row.get("corrected_folder", ""),
             }
         )
     return review

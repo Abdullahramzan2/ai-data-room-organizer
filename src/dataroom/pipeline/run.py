@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -10,17 +9,7 @@ from dataroom.classification import ClassificationEngine
 from dataroom.classification.engine import default_cache_dir
 from dataroom.classification.runtime import build_classification_runtime
 from dataroom.config import load_app_config, load_taxonomy
-from dataroom.duplicates import detect_duplicates, load_duplicate_config, write_duplicate_report_csv
-from dataroom.export import (
-    build_ingestion_error_rows,
-    build_manifest_rows,
-    build_organize_error_rows,
-    write_errors_report_csv,
-    write_html_index,
-    write_manifest_csv,
-    write_manifest_xlsx,
-    write_review_queue_csv,
-)
+from dataroom.duplicates import detect_duplicates, load_duplicate_config
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
 from dataroom.ingestion.hashing import sha256_file
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
@@ -28,11 +17,10 @@ from dataroom.ingestion.pipeline import run_ingestion
 from dataroom.organizer import organize_files
 from dataroom.ocr.tesseract import OcrConfig
 from dataroom.pipeline.cache import (
-    build_classification_cache_payload,
     build_ingestion_cache_payload,
-    write_classification_cache,
     write_ingestion_cache,
 )
+from dataroom.pipeline.outputs import export_pipeline_outputs
 
 
 def _document_from_row(row: dict[str, Any]) -> ExtractedDocument:
@@ -143,10 +131,6 @@ def run_pipeline(
                 failed_files=ingestion_result.failed_files,
             ),
         )
-        write_classification_cache(
-            classification_cache_path,
-            build_classification_cache_payload(classification_results),
-        )
 
     organized = organize_files(
         classification_results,
@@ -155,67 +139,23 @@ def run_pipeline(
         rename=rename,
     )
 
-    manifest_rows = build_manifest_rows(
-        ingestion_docs,
-        classification_results,
-        output_dir,
-        rename=rename,
-        organize_results=organized,
-    )
-    manifest_path = output_dir / output_cfg.get("manifest_file", "manifest.csv")
-    manifest_xlsx_path = output_dir / output_cfg.get("manifest_xlsx_file", "manifest.xlsx")
-    review_path = output_dir / output_cfg.get("review_queue_file", "review_queue.csv")
-    errors_path = output_dir / output_cfg.get("errors_report_file", "errors_report.csv")
-    duplicate_path = output_dir / output_cfg.get("duplicate_report_file", "duplicate_report.csv")
-    index_html_path = output_dir / output_cfg.get("index_html_file", "index.html")
-    write_manifest_csv(manifest_path, rows=manifest_rows)
-    write_manifest_xlsx(manifest_xlsx_path, manifest_rows)
-    write_review_queue_csv(review_path, manifest_rows)
-    write_duplicate_report_csv(duplicate_path, duplicate_pairs)
-    write_html_index(
-        index_html_path,
-        manifest_rows,
-        link_mode=str(output_cfg.get("index_link_mode", "original")),
+    return export_pipeline_outputs(
         output_dir=output_dir,
+        config=config,
+        ingestion_docs=ingestion_docs,
+        classification_results=classification_results,
+        organized=organized,
+        duplicate_pairs=duplicate_pairs,
+        skipped_files=ingestion_result.skipped_files,
+        failed_files=ingestion_result.failed_files,
+        rename=rename,
+        input_dir=input_dir,
+        persist_classification_cache=persist_cache,
+        extra_summary={
+            "reasoning_provider": reasoning_provider.provider_id,
+            "guardrails_external_api": guardrails.config.allow_external_api,
+            "audit_log": str(guardrails.resolve_audit_path(output_dir) or ""),
+            "ingestion_cache": str(ingestion_cache_path) if persist_cache else "",
+            "rerun": False,
+        },
     )
-
-    error_rows = build_ingestion_error_rows(
-        ingestion_result.skipped_files,
-        ingestion_result.failed_files,
-    )
-    error_rows.extend(build_organize_error_rows(organized))
-    write_errors_report_csv(errors_path, error_rows)
-
-    api_used_count = sum(1 for r in classification_results if r.get("api_used"))
-    review_count = sum(1 for r in manifest_rows if r.get("needs_review") == "true")
-    organized_success = sum(1 for r in organized if r.success)
-
-    summary = {
-        "input_dir": str(input_dir),
-        "output_dir": str(output_dir),
-        "processed": len(ingestion_docs),
-        "organized": organized_success,
-        "skipped_count": len(ingestion_result.skipped_files),
-        "ingestion_failed_count": len(ingestion_result.failed_files),
-        "organize_failed_count": sum(1 for r in organized if not r.success),
-        "review_queue_count": review_count,
-        "api_used_count": api_used_count,
-        "reasoning_provider": reasoning_provider.provider_id,
-        "guardrails_external_api": guardrails.config.allow_external_api,
-        "audit_log": str(guardrails.resolve_audit_path(output_dir) or ""),
-        "manifest": str(manifest_path),
-        "manifest_xlsx": str(manifest_xlsx_path),
-        "review_queue": str(review_path),
-        "errors_report": str(errors_path),
-        "duplicate_report": str(duplicate_path),
-        "duplicate_pair_count": len(duplicate_pairs),
-        "index_html": str(index_html_path),
-        "index_link_mode": str(output_cfg.get("index_link_mode", "original")),
-        "ingestion_cache": str(ingestion_cache_path) if persist_cache else "",
-        "classification_cache": str(classification_cache_path) if persist_cache else "",
-        "persist_ingestion_cache": persist_cache,
-    }
-
-    summary_path = output_dir / "run_summary.json"
-    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    return summary
