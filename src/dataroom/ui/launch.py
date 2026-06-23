@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from dataroom.ui.launch_config import streamlit_argv
+
 
 def main() -> None:
     try:
@@ -15,13 +17,7 @@ def main() -> None:
         ) from exc
 
     app_path = Path(__file__).resolve().parent / "app.py"
-    sys.argv = [
-        "streamlit",
-        "run",
-        str(app_path),
-        "--server.headless",
-        "true",
-    ]
+    sys.argv = streamlit_argv(app_path)
     stcli.main()
 
 

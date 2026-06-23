@@ -424,16 +424,10 @@ def ui_cmd(port: int) -> None:
     except ImportError as exc:
         raise click.ClickException('Install UI support: pip install -e ".[ui]"') from exc
 
+    from dataroom.ui.launch_config import streamlit_argv
+
     app_path = Path(__file__).resolve().parent / "ui" / "app.py"
-    sys.argv = [
-        "streamlit",
-        "run",
-        str(app_path),
-        "--server.port",
-        str(port),
-        "--server.headless",
-        "true",
-    ]
+    sys.argv = streamlit_argv(app_path, port=port)
     stcli.main()
 
 

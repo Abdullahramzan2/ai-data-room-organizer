@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
 from dataroom.config import load_app_config, load_taxonomy, resolve_project_root
-from dataroom.doctor import run_doctor
-from dataroom.doctor.checks import format_doctor_report
 from dataroom.export.review_queue import REVIEW_COLUMNS, read_review_queue_csv, write_review_queue_rows
-from dataroom.pipeline import run_pipeline, run_rerun
-from dataroom.pipeline.rerun import RerunError
 from dataroom.ui.helpers import (
     default_config_path,
     list_output_artifacts,
@@ -78,6 +73,8 @@ def _page_run() -> None:
 
         with st.spinner("Running pipeline…"):
             try:
+                from dataroom.pipeline import run_pipeline
+
                 summary = run_pipeline(
                     input_path,
                     output_path,
@@ -152,6 +149,9 @@ def _page_review() -> None:
             write_review_queue_rows(queue_path, edited.to_dict(orient="records"))
             with st.spinner("Applying corrections…"):
                 try:
+                    from dataroom.pipeline import run_rerun
+                    from dataroom.pipeline.rerun import RerunError
+
                     summary = run_rerun(output_dir, config_path=config_path)
                 except RerunError as exc:
                     st.error(str(exc))
@@ -193,6 +193,9 @@ def _page_doctor() -> None:
     st.caption("Verify Python, OCR tools, embedding model, and optional LLM endpoints.")
 
     if st.button("Run doctor", type="primary"):
+        from dataroom.doctor import run_doctor
+        from dataroom.doctor.checks import format_doctor_report
+
         with st.spinner("Checking environment…"):
             report = run_doctor(_config_path())
         st.code(format_doctor_report(report))
