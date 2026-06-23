@@ -8,7 +8,12 @@ import pandas as pd
 import streamlit as st
 
 from dataroom.config import load_app_config, load_taxonomy, resolve_project_root
-from dataroom.export.review_queue import REVIEW_COLUMNS, read_review_queue_csv, write_review_queue_rows
+from dataroom.export.review_queue import (
+    REVIEW_COLUMNS,
+    ReviewQueueWriteError,
+    read_review_queue_csv,
+    write_review_queue_rows,
+)
 from dataroom.ui.helpers import (
     default_config_path,
     list_output_artifacts,
@@ -87,20 +92,23 @@ def _page_run() -> None:
                 )
             except PipelineSubprocessError as exc:
                 st.error(str(exc))
-                if exc.log:
-                    with st.expander("Process log"):
-                        st.code(exc.log)
                 return
             except Exception as exc:
                 st.error(f"Pipeline failed: {exc}")
                 return
 
-        if result.log:
-            with st.expander("Process log"):
-                st.code(result.log)
-
         st.success("Pipeline completed successfully.")
         display_run_summary(result.summary)
+
+
+def _save_review_queue(queue_path: Path, edited) -> bool:
+    """Persist review queue edits; return True on success."""
+    try:
+        write_review_queue_rows(queue_path, edited.to_dict(orient="records"))
+        return True
+    except ReviewQueueWriteError as exc:
+        st.error(str(exc))
+        return False
 
 
 def _page_review() -> None:
@@ -143,18 +151,19 @@ def _page_review() -> None:
             "supporting_terms": st.column_config.TextColumn(disabled=True),
         },
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
     )
 
     col_save, col_rerun = st.columns(2)
     with col_save:
         if st.button("Save review queue"):
-            write_review_queue_rows(queue_path, edited.to_dict(orient="records"))
-            st.success(f"Saved {queue_path}")
+            if _save_review_queue(queue_path, edited):
+                st.success(f"Saved {queue_path}")
 
     with col_rerun:
         if st.button("Rerun with corrections", type="primary"):
-            write_review_queue_rows(queue_path, edited.to_dict(orient="records"))
+            if not _save_review_queue(queue_path, edited):
+                return
             with st.spinner("Applying corrections in background process…"):
                 try:
                     from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_rerun_subprocess
@@ -165,16 +174,10 @@ def _page_review() -> None:
                     )
                 except PipelineSubprocessError as exc:
                     st.error(str(exc))
-                    if exc.log:
-                        with st.expander("Process log"):
-                            st.code(exc.log)
                     return
                 except Exception as exc:
                     st.error(f"Rerun failed: {exc}")
                     return
-            if result.log:
-                with st.expander("Process log"):
-                    st.code(result.log)
             for warning in result.summary.get("correction_warnings", []):
                 st.warning(warning)
             st.success("Rerun completed.")
@@ -200,7 +203,7 @@ def _page_taxonomy() -> None:
                 "review_queue": bool(cat.get("is_review_queue", False)),
             }
         )
-    st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
 
 
 def _page_doctor() -> None:
@@ -219,9 +222,6 @@ def _page_doctor() -> None:
         else:
             st.success("No blocking failures detected.")
 
-        with st.expander("Technical details (JSON)"):
-            st.json(report.to_dict())
-
 
 def _page_outputs() -> None:
     st.header("Outputs")
@@ -239,7 +239,7 @@ def _page_outputs() -> None:
         st.info("No run_summary.json yet. Run the pipeline first.")
 
     artifacts = list_output_artifacts(output_dir, config=config)
-    st.dataframe(pd.DataFrame(artifacts), hide_index=True, use_container_width=True)
+    st.dataframe(pd.DataFrame(artifacts), hide_index=True, width="stretch")
 
     index_path = output_dir / config.get("output", {}).get("index_html_file", "index.html")
     if index_path.is_file():

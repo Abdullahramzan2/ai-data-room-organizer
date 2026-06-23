@@ -72,6 +72,3 @@ def display_run_summary(summary: dict[str, Any], *, title: str = "Run summary") 
     provider = summary.get("reasoning_provider")
     if provider:
         st.caption(f"Reasoning provider: {provider}")
-
-    with st.expander("Technical details (JSON)"):
-        st.json(summary)

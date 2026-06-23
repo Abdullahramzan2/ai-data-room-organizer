@@ -27,7 +27,7 @@ def folder_path_field(
     ui = st.sidebar if sidebar else st
     if stacked or sidebar:
         ui.text_input(label, key=state_key)
-        if ui.button("Browse…", key=f"browse_{state_key}", use_container_width=True):
+        if ui.button("Browse…", key=f"browse_{state_key}", width="stretch"):
             current = str(st.session_state.get(state_key, "") or "")
             picked = browse_folder(current, title=f"Select {label.lower()}")
             if picked:
@@ -39,7 +39,7 @@ def folder_path_field(
     with path_col:
         ui.text_input(label, key=state_key)
     with btn_col:
-        if ui.button("Browse", key=f"browse_{state_key}", use_container_width=True):
+        if ui.button("Browse", key=f"browse_{state_key}", width="stretch"):
             current = str(st.session_state.get(state_key, "") or "")
             picked = browse_folder(current, title=f"Select {label.lower()}")
             if picked:
