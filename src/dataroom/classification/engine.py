@@ -198,6 +198,25 @@ class ClassificationEngine:
             text,
             top_k=self.config.top_candidates,
         )
+        return self._finalize_after_embedding(
+            document,
+            text,
+            keyword_result,
+            embedding_result,
+            candidates,
+        )
+
+    def _finalize_after_embedding(
+        self,
+        document: ExtractedDocument,
+        text: str,
+        keyword_result: TierResult | None,
+        embedding_result: TierResult | None,
+        candidates: list[tuple[str, float]],
+    ) -> ClassificationResult:
+        meta = document.metadata
+        source_path = meta.source_path
+
         local_result = _combine_local_scores(keyword_result, embedding_result, self.config)
 
         if local_result and local_result.score >= self.config.medium_threshold:
@@ -303,7 +322,60 @@ class ClassificationEngine:
         )
 
     def classify_batch(self, documents: list[ExtractedDocument]) -> list[ClassificationResult]:
-        return [self.classify_document(doc) for doc in documents]
+        if not documents:
+            return []
+
+        results: list[ClassificationResult | None] = [None] * len(documents)
+        embedding_jobs: list[tuple[int, ExtractedDocument, str, TierResult | None]] = []
+
+        for idx, document in enumerate(documents):
+            meta = document.metadata
+            text = document.combined_text[: self.config.excerpt_chars]
+
+            keyword_result = classify_by_keywords(
+                self._classifiable,
+                meta.file_name,
+                text,
+                self.config,
+            )
+            if keyword_result and keyword_result.score >= self.config.high_threshold:
+                confidence = _score_to_confidence(keyword_result.score, self.config)
+                results[idx] = _finalize_result(
+                    meta.source_path, keyword_result, confidence, self.categories, text,
+                    reasoning_provider="local",
+                )
+                continue
+
+            if keyword_result and keyword_result.score >= self.config.medium_threshold:
+                confidence = _score_to_confidence(keyword_result.score, self.config)
+                results[idx] = _finalize_result(
+                    meta.source_path, keyword_result, confidence, self.categories, text,
+                    reasoning_provider="local",
+                )
+                continue
+
+            embedding_jobs.append((idx, document, text, keyword_result))
+
+        if embedding_jobs:
+            embed_items = [(doc.metadata.file_name, text) for _, doc, text, _ in embedding_jobs]
+            embed_outputs = self._embedder.classify_many(
+                embed_items,
+                top_k=self.config.top_candidates,
+            )
+            for (idx, document, text, keyword_result), (embedding_result, candidates) in zip(
+                embedding_jobs,
+                embed_outputs,
+                strict=True,
+            ):
+                results[idx] = self._finalize_after_embedding(
+                    document,
+                    text,
+                    keyword_result,
+                    embedding_result,
+                    candidates,
+                )
+
+        return [result for result in results if result is not None]
 
 
 def default_cache_dir(app_config: dict[str, Any]) -> Path:

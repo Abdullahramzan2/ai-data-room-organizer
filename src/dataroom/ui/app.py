@@ -75,11 +75,11 @@ def _page_run() -> None:
             st.error(f"Input folder not found: {input_path}")
             return
 
-        with st.spinner("Running pipeline…"):
+        with st.spinner("Running pipeline in background process…"):
             try:
-                from dataroom.pipeline import run_pipeline
+                from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_pipeline_subprocess
 
-                summary = run_pipeline(
+                result = run_pipeline_subprocess(
                     input_path,
                     output_path,
                     config_path=config_path,
@@ -87,9 +87,20 @@ def _page_run() -> None:
                     no_ocr=no_ocr,
                     no_recursive=no_recursive,
                 )
+            except PipelineSubprocessError as exc:
+                st.error(str(exc))
+                if exc.log:
+                    with st.expander("Process log"):
+                        st.code(exc.log)
+                return
             except Exception as exc:
                 st.error(f"Pipeline failed: {exc}")
                 return
+
+        summary = result.summary
+        if result.log:
+            with st.expander("Process log"):
+                st.code(result.log)
 
         st.success(
             f"Processed {summary['processed']} file(s); "
@@ -151,18 +162,27 @@ def _page_review() -> None:
     with col_rerun:
         if st.button("Rerun with corrections", type="primary"):
             write_review_queue_rows(queue_path, edited.to_dict(orient="records"))
-            with st.spinner("Applying corrections…"):
+            with st.spinner("Applying corrections in background process…"):
                 try:
-                    from dataroom.pipeline import run_rerun
-                    from dataroom.pipeline.rerun import RerunError
+                    from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_rerun_subprocess
 
-                    summary = run_rerun(output_dir, config_path=config_path)
-                except RerunError as exc:
+                    result = run_rerun_subprocess(
+                        output_dir,
+                        config_path=config_path,
+                    )
+                except PipelineSubprocessError as exc:
                     st.error(str(exc))
+                    if exc.log:
+                        with st.expander("Process log"):
+                            st.code(exc.log)
                     return
                 except Exception as exc:
                     st.error(f"Rerun failed: {exc}")
                     return
+            summary = result.summary
+            if result.log:
+                with st.expander("Process log"):
+                    st.code(result.log)
             st.success(f"Applied {summary['corrections_applied']} correction(s).")
             for warning in summary.get("correction_warnings", []):
                 st.warning(warning)

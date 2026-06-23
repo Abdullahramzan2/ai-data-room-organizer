@@ -99,43 +99,80 @@ class EmbeddingClassifier:
         *,
         top_k: int = 3,
     ) -> tuple[TierResult | None, list[tuple[str, float]]]:
+        results = self.classify_many([(file_name, text)], top_k=top_k)
+        return results[0]
+
+    def classify_many(
+        self,
+        items: list[tuple[str, str]],
+        *,
+        top_k: int = 3,
+    ) -> list[tuple[TierResult | None, list[tuple[str, float]]]]:
+        """Embed and rank multiple documents in one model.encode() call."""
+        if not items:
+            return []
+
         self.ensure_ready()
         assert self._index is not None
 
-        excerpt = text[: self.config.excerpt_chars]
-        doc_text = f"{file_name}\n{excerpt}".strip()
-        if not doc_text:
-            return None, []
+        doc_texts: list[str] = []
+        empty_indices: set[int] = set()
+        for idx, (file_name, text) in enumerate(items):
+            excerpt = text[: self.config.excerpt_chars]
+            doc_text = f"{file_name}\n{excerpt}".strip()
+            if not doc_text:
+                empty_indices.add(idx)
+                doc_texts.append("")
+            else:
+                doc_texts.append(doc_text)
 
         self._load_model()
         assert self._model is not None
-        vector = self._model.encode([doc_text], normalize_embeddings=True)
-        query = np.asarray(vector, dtype=np.float32)
+
+        encode_indices = [i for i in range(len(items)) if i not in empty_indices]
+        vectors_by_index: dict[int, np.ndarray] = {}
+        if encode_indices:
+            texts_to_encode = [doc_texts[i] for i in encode_indices]
+            encoded = self._model.encode(
+                texts_to_encode,
+                normalize_embeddings=True,
+                batch_size=32,
+            )
+            for pos, original_idx in enumerate(encode_indices):
+                vectors_by_index[original_idx] = np.asarray(encoded[pos], dtype=np.float32)
+
+        results: list[tuple[TierResult | None, list[tuple[str, float]]]] = []
         k = min(top_k, len(self.categories))
-        scores, indices = self._index.search(query, k)
-
-        candidates: list[tuple[str, float]] = []
-        for idx, score in zip(indices[0], scores[0], strict=False):
-            if idx < 0:
+        for idx in range(len(items)):
+            if idx in empty_indices:
+                results.append((None, []))
                 continue
-            cat_id = self._category_ids[idx]
-            candidates.append((cat_id, float(score)))
-
-        if not candidates:
-            return None, []
-
-        best_id, best_score = candidates[0]
-        best_cat = next(c for c in self.categories if c.id == best_id)
-        return (
-            TierResult(
-                category_id=best_cat.id,
-                category_folder=best_cat.folder,
-                score=best_score,
-                method="embedding",
-                reason=(
-                    f"Embedding similarity {best_score:.2f} to "
-                    f"category {best_cat.folder}"
-                ),
-            ),
-            candidates,
-        )
+            query = np.asarray([vectors_by_index[idx]], dtype=np.float32)
+            scores, indices = self._index.search(query, k)
+            candidates: list[tuple[str, float]] = []
+            for cat_idx, score in zip(indices[0], scores[0], strict=False):
+                if cat_idx < 0:
+                    continue
+                cat_id = self._category_ids[cat_idx]
+                candidates.append((cat_id, float(score)))
+            if not candidates:
+                results.append((None, []))
+                continue
+            best_id, best_score = candidates[0]
+            best_cat = next(c for c in self.categories if c.id == best_id)
+            results.append(
+                (
+                    TierResult(
+                        category_id=best_cat.id,
+                        category_folder=best_cat.folder,
+                        score=best_score,
+                        method="embedding",
+                        reason=(
+                            f"Embedding similarity {best_score:.2f} to "
+                            f"category {best_cat.folder}"
+                        ),
+                    ),
+                    candidates,
+                )
+            )
+        return results

@@ -106,11 +106,10 @@ def run_pipeline(
         reasoning_provider=reasoning_provider,
         guardrails=guardrails,
     )
-    classification_results = []
-    for row in ingestion_docs:
-        doc = _document_from_row(row)
-        result = engine.classify_document(doc)
-        classification_results.append(result.to_dict())
+    classification_results = [
+        result.to_dict()
+        for result in engine.classify_batch([_document_from_row(row) for row in ingestion_docs])
+    ]
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
