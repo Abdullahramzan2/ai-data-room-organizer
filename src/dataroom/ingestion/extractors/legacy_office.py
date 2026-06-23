@@ -24,6 +24,24 @@ _LIBREOFFICE_WINDOWS_PATHS = (
 )
 
 
+def resolve_libreoffice_cmd(configured: str | None) -> str | None:
+    """Return LibreOffice soffice path from config, PATH, or common Windows install locations."""
+    if configured:
+        cmd = Path(configured)
+        if cmd.is_file():
+            return str(cmd)
+
+    found = shutil.which("soffice")
+    if found:
+        return found
+
+    if platform.system() == "Windows":
+        for candidate in _LIBREOFFICE_WINDOWS_PATHS:
+            if Path(candidate).is_file():
+                return candidate
+    return None
+
+
 @dataclass
 class LegacyOfficeConfig:
     libreoffice_cmd: str | None = None
@@ -152,20 +170,7 @@ class LegacyOfficeConverter:
         return result
 
     def _find_libreoffice(self) -> str | None:
-        if self.config.libreoffice_cmd:
-            cmd = Path(self.config.libreoffice_cmd)
-            if cmd.is_file():
-                return str(cmd)
-
-        found = shutil.which("soffice")
-        if found:
-            return found
-
-        if platform.system() == "Windows":
-            for candidate in _LIBREOFFICE_WINDOWS_PATHS:
-                if Path(candidate).is_file():
-                    return candidate
-        return None
+        return resolve_libreoffice_cmd(self.config.libreoffice_cmd)
 
     def _convert_via_libreoffice(
         self,

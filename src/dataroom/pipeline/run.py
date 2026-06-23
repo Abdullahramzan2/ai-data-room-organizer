@@ -16,7 +16,9 @@ from dataroom.export import (
     build_manifest_rows,
     build_organize_error_rows,
     write_errors_report_csv,
+    write_html_index,
     write_manifest_csv,
+    write_manifest_xlsx,
     write_review_queue_csv,
 )
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
@@ -161,12 +163,21 @@ def run_pipeline(
         organize_results=organized,
     )
     manifest_path = output_dir / output_cfg.get("manifest_file", "manifest.csv")
+    manifest_xlsx_path = output_dir / output_cfg.get("manifest_xlsx_file", "manifest.xlsx")
     review_path = output_dir / output_cfg.get("review_queue_file", "review_queue.csv")
     errors_path = output_dir / output_cfg.get("errors_report_file", "errors_report.csv")
     duplicate_path = output_dir / output_cfg.get("duplicate_report_file", "duplicate_report.csv")
+    index_html_path = output_dir / output_cfg.get("index_html_file", "index.html")
     write_manifest_csv(manifest_path, rows=manifest_rows)
+    write_manifest_xlsx(manifest_xlsx_path, manifest_rows)
     write_review_queue_csv(review_path, manifest_rows)
     write_duplicate_report_csv(duplicate_path, duplicate_pairs)
+    write_html_index(
+        index_html_path,
+        manifest_rows,
+        link_mode=str(output_cfg.get("index_link_mode", "original")),
+        output_dir=output_dir,
+    )
 
     error_rows = build_ingestion_error_rows(
         ingestion_result.skipped_files,
@@ -193,10 +204,13 @@ def run_pipeline(
         "guardrails_external_api": guardrails.config.allow_external_api,
         "audit_log": str(guardrails.resolve_audit_path(output_dir) or ""),
         "manifest": str(manifest_path),
+        "manifest_xlsx": str(manifest_xlsx_path),
         "review_queue": str(review_path),
         "errors_report": str(errors_path),
         "duplicate_report": str(duplicate_path),
         "duplicate_pair_count": len(duplicate_pairs),
+        "index_html": str(index_html_path),
+        "index_link_mode": str(output_cfg.get("index_link_mode", "original")),
         "ingestion_cache": str(ingestion_cache_path) if persist_cache else "",
         "classification_cache": str(classification_cache_path) if persist_cache else "",
         "persist_ingestion_cache": persist_cache,

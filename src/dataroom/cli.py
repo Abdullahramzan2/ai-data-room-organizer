@@ -14,9 +14,17 @@ from dataroom.classification import ClassificationEngine
 from dataroom.classification.engine import default_cache_dir
 from dataroom.classification.runtime import build_classification_runtime
 from dataroom.config import load_app_config, load_taxonomy
-from dataroom.export import build_manifest_rows, write_manifest_csv, write_review_queue_csv
+from dataroom.export import (
+    build_manifest_rows,
+    write_html_index,
+    write_manifest_csv,
+    write_manifest_xlsx,
+    write_review_queue_csv,
+)
 from dataroom.organizer import organize_files
 from dataroom.pipeline import run_pipeline
+from dataroom.doctor import run_doctor
+from dataroom.doctor.checks import format_doctor_report
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
 from dataroom.ingestion.pipeline import run_ingestion
@@ -333,13 +341,44 @@ def export_cmd(
         rename=rename,
     )
     manifest_path = output_dir / output_cfg.get("manifest_file", "manifest.csv")
+    manifest_xlsx_path = output_dir / output_cfg.get("manifest_xlsx_file", "manifest.xlsx")
+    index_html_path = output_dir / output_cfg.get("index_html_file", "index.html")
     review_path = output_dir / output_cfg.get("review_queue_file", "review_queue.csv")
 
     write_manifest_csv(manifest_path, rows)
+    write_manifest_xlsx(manifest_xlsx_path, rows)
+    write_html_index(
+        index_html_path,
+        rows,
+        link_mode=str(output_cfg.get("index_link_mode", "original")),
+        output_dir=output_dir,
+    )
     write_review_queue_csv(review_path, rows)
     review_count = sum(1 for r in rows if r.get("needs_review") == "true")
     click.echo(f"Wrote {manifest_path} ({len(rows)} rows)")
+    click.echo(f"Wrote {manifest_xlsx_path}")
+    click.echo(f"Wrote {index_html_path}")
     click.echo(f"Wrote {review_path} ({review_count} rows)")
+
+
+@main.command("doctor")
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to application config YAML.",
+)
+@click.option("--json", "as_json", is_flag=True, help="Print results as JSON.")
+def doctor_cmd(config_path: Path | None, as_json: bool) -> None:
+    """Verify Python, OCR tools, embedding model, and optional LLM endpoints."""
+    report = run_doctor(config_path)
+    if as_json:
+        click.echo(json.dumps(report.to_dict(), indent=2))
+    else:
+        click.echo(format_doctor_report(report))
+    if report.has_failures:
+        raise SystemExit(1)
 
 
 @main.command("taxonomy")

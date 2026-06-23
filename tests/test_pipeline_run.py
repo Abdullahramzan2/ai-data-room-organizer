@@ -19,6 +19,8 @@ def test_run_pipeline(tmp_path: Path):
     assert summary["processed"] == 1
     assert summary["organized"] == 1
     assert (output_dir / "manifest.csv").is_file()
+    assert (output_dir / "manifest.xlsx").is_file()
+    assert (output_dir / "index.html").is_file()
     assert (output_dir / "review_queue.csv").is_file()
     assert (output_dir / "errors_report.csv").is_file()
     assert (output_dir / "run_summary.json").is_file()
@@ -41,5 +43,7 @@ def test_run_pipeline(tmp_path: Path):
     assert summary["persist_ingestion_cache"] is True
     assert summary["ingestion_cache"].endswith("ingestion_cache.json")
     assert summary["classification_cache"].endswith("classification_cache.json")
-    assert summary["duplicate_report"].endswith("duplicate_report.csv")
+    assert summary["manifest_xlsx"].endswith("manifest.xlsx")
+    assert summary["index_html"].endswith("index.html")
+    assert summary["index_link_mode"] == "original"
     assert summary["duplicate_pair_count"] == 0
