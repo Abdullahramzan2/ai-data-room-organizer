@@ -19,10 +19,17 @@ from dataroom.export import (
     write_review_queue_csv,
 )
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
+from dataroom.ingestion.hashing import sha256_file
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
 from dataroom.ingestion.pipeline import run_ingestion
 from dataroom.organizer import organize_files
 from dataroom.ocr.tesseract import OcrConfig
+from dataroom.pipeline.cache import (
+    build_classification_cache_payload,
+    build_ingestion_cache_payload,
+    write_classification_cache,
+    write_ingestion_cache,
+)
 
 
 def _document_from_row(row: dict[str, Any]) -> ExtractedDocument:
@@ -31,13 +38,22 @@ def _document_from_row(row: dict[str, Any]) -> ExtractedDocument:
             source_path=Path(row["source_path"]),
             file_name=row["file_name"],
             extension=row["extension"],
-            file_size=row["file_size"],
+            file_size=int(row.get("file_size") or 0),
         ),
         text_content=row.get("text_content", ""),
         ocr_text=row.get("ocr_text", ""),
         extraction_method=ExtractionMethod(row.get("extraction_method", "skipped")),
         extra=row.get("extra") or {},
     )
+
+
+def _attach_file_hashes(ingestion_docs: list[dict[str, Any]]) -> None:
+    for doc in ingestion_docs:
+        source = Path(doc["source_path"])
+        try:
+            doc["file_hash"] = sha256_file(source)
+        except OSError:
+            doc["file_hash"] = ""
 
 
 def run_pipeline(
@@ -86,6 +102,7 @@ def run_pipeline(
         max_text_chars=ingest_cfg.get("max_text_chars", 500_000),
     )
     ingestion_docs = [d.to_dict() for d in ingestion_result.documents]
+    _attach_file_hashes(ingestion_docs)
 
     taxonomy = load_taxonomy(config=config)
     engine = ClassificationEngine(
@@ -103,6 +120,29 @@ def run_pipeline(
         classification_results.append(result.to_dict())
 
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    persist_cache = output_cfg.get("persist_ingestion_cache", True)
+    ingestion_cache_path = output_dir / output_cfg.get(
+        "ingestion_cache_file", "ingestion_cache.json"
+    )
+    classification_cache_path = output_dir / output_cfg.get(
+        "classification_cache_file", "classification_cache.json"
+    )
+    if persist_cache:
+        write_ingestion_cache(
+            ingestion_cache_path,
+            build_ingestion_cache_payload(
+                input_dir,
+                ingestion_docs,
+                skipped_files=ingestion_result.skipped_files,
+                failed_files=ingestion_result.failed_files,
+            ),
+        )
+        write_classification_cache(
+            classification_cache_path,
+            build_classification_cache_payload(classification_results),
+        )
+
     organized = organize_files(
         classification_results,
         output_dir,
@@ -150,6 +190,9 @@ def run_pipeline(
         "manifest": str(manifest_path),
         "review_queue": str(review_path),
         "errors_report": str(errors_path),
+        "ingestion_cache": str(ingestion_cache_path) if persist_cache else "",
+        "classification_cache": str(classification_cache_path) if persist_cache else "",
+        "persist_ingestion_cache": persist_cache,
     }
 
     summary_path = output_dir / "run_summary.json"

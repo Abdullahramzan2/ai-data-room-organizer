@@ -99,6 +99,16 @@ guardrails:
   provider_allow_list: []
   provider_block_list: []
 
+duplicates:
+  enabled: true
+  hash_algorithm: sha256
+  near_similarity_threshold: 0.92
+  min_text_chars_for_near: 100
+  max_near_pairs: 50000
+
+corrections:
+  review_queue_corrected_folder_column: corrected_folder
+
 paths:
   taxonomy_file: taxonomy/real_estate_development.yaml
   cache_dir: output/.cache
@@ -108,3 +118,10 @@ output:
   manifest_file: manifest.csv
   review_queue_file: review_queue.csv
   errors_report_file: errors_report.csv
+  manifest_xlsx_file: manifest.xlsx
+  duplicate_report_file: duplicate_report.csv
+  index_html_file: index.html
+  index_link_mode: original
+  persist_ingestion_cache: true
+  ingestion_cache_file: ingestion_cache.json
+  classification_cache_file: classification_cache.json

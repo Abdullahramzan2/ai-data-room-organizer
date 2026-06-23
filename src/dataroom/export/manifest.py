@@ -33,6 +33,9 @@ MANIFEST_COLUMNS = [
     "api_used",
     "organize_status",
     "organize_error",
+    "file_size",
+    "modified_at",
+    "file_hash",
 ]
 
 
@@ -122,6 +125,9 @@ def build_manifest_rows(
                 "api_used": str(bool(cls.get("api_used", False))).lower(),
                 "organize_status": organize_status,
                 "organize_error": organize_error,
+                "file_size": str(doc.get("file_size", "")),
+                "modified_at": str(doc.get("modified_at") or ""),
+                "file_hash": str(doc.get("file_hash") or ""),
             }
         )
 
