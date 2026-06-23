@@ -71,8 +71,7 @@ dataroom run "C:\Users\user\Desktop\Sample Data" --output-dir output\demo
 
 1. Set input/output via Browse
 2. Click **Run pipeline**
-3. Show **Process log** expander if needed
-4. Show **Run summary** metrics when complete
+3. Show **Run summary** metrics when complete (processed, review queue, duplicates, timings)
 
 **While waiting, explain:**
 
@@ -176,7 +175,7 @@ Open `config/default.yaml` — thresholds, guardrails, duplicate settings, `inde
 |-------|-----------|
 | Doctor embedding fail | `dataroom download-models` |
 | Run slow | Normal on first OCR-heavy batch; mention cache on rerun |
-| UI subprocess error | Show CLI `dataroom run` as fallback |
+| UI subprocess error | Show CLI `dataroom run` as fallback; run `dataroom doctor` |
 | Ollama not used | `CLASSIFICATION_MODE=hybrid` + `ollama serve` running |
 
 ---
@@ -187,5 +186,6 @@ Share:
 
 - `docs/USER_GUIDE.md`
 - `docs/INSTALLATION_WINDOWS.md`
+- `docs/TESTING.md`
 - `docs/MILESTONE_4.md`
 - `README.md`

@@ -9,6 +9,7 @@ Local tool to ingest, classify, and organize large document batches into a data-
 | `docs/USER_GUIDE.md` | Day-to-day operator workflow |
 | `docs/INSTALLATION_WINDOWS.md` | Full Windows setup |
 | `docs/DEMO.md` | Stakeholder demo script |
+| `docs/TESTING.md` | QA / acceptance test checklist |
 | `docs/CALIBRATION.md` | Threshold and taxonomy tuning |
 
 ## Requirements
@@ -32,7 +33,11 @@ copy .env.example .env
 dataroom doctor
 ```
 
-`pip install -e ".[ui]"` installs the CLI, Streamlit UI, and all Python dependencies. Use `pip install -e ".[ui,dev]"` for pytest.
+`pip install -e ".[ui]"` installs the CLI, Streamlit UI, and all Python dependencies (see `pyproject.toml`). Use `pip install -e ".[ui,dev]"` for pytest.
+
+`requirements.txt` lists core runtime packages only (legacy reference). **Do not** rely on `pip install -r requirements.txt` for the UI — use the `[ui]` extra above.
+
+Stop `dataroom ui` before reinstalling, or Windows may lock `dataroom.exe` during `pip install`.
 
 `dataroom download-models` fetches the embedding model (`all-MiniLM-L6-v2`, ~90 MB) once. If skipped, it downloads on the first `dataroom run`.
 
@@ -136,6 +141,8 @@ tests/
 pip install -e ".[ui,dev]"
 pytest -v
 ```
+
+See `docs/TESTING.md` for manual QA checklist (run options, duplicates, review/rerun, UI tabs).
 
 ## License
 

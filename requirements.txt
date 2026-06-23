@@ -1,3 +1,9 @@
+# Legacy flat install list. Prefer pyproject.toml:
+#   pip install -e ".[ui]"       — CLI + Streamlit UI
+#   pip install -e ".[ui,dev]"   — adds pytest
+#
+# Do not use "pip install -r requirements.txt" alone for the UI; Streamlit is in the [ui] extra.
+
 setuptools>=81.0
 click>=8.1.7
 tqdm>=4.66.0
@@ -20,4 +26,3 @@ torchvision>=0.17.0
 transformers>=5.0.0
 huggingface-hub>=0.23.0
 openai>=1.40.0
-pytest>=8.0.0

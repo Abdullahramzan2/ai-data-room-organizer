@@ -140,7 +140,7 @@ When `duplicates.enabled: true` (default):
 - **Exact** — same SHA-256 file hash
 - **Near** — high text similarity (configurable threshold)
 
-Review `duplicate_report.csv` before sharing the data room externally. The tool reports duplicates; it does not delete or merge files automatically.
+Review `duplicate_report.csv` before sharing the data room externally. The tool reports duplicates within the scanned input batch; it does not delete or merge files automatically, and it does not detect duplicates across separate runs or unrelated folders.
 
 ---
 
@@ -168,9 +168,13 @@ KMZ and DWG files are always **local-only** — never sent to external APIs.
 | OCR not working | `dataroom doctor` — install Tesseract + Poppler; restart terminal |
 | Legacy `.doc` fails | Install LibreOffice; check doctor |
 | `rerun` says missing cache | Run full `dataroom run` first on that output folder |
-| UI shows subprocess error | Expand **Process log**; fix path or run `dataroom doctor` |
+| UI shows subprocess error | Read the error message; fix paths or run `dataroom doctor` |
+| Cannot save review queue | Close `review_queue.csv` in Excel or another editor, then retry |
 | Ollama not used | Start `ollama serve`; set `REASONING_PROVIDER=ollama` in `.env` |
+| Same file in/out of review queue | Tier 3 (Ollama) is non-deterministic for ambiguous docs — see `docs/CALIBRATION.md` |
 | Review queue empty but files look wrong | Check `manifest.csv` — only medium/low confidence rows appear in review queue |
+| Re-run stacks `_2`, `_3` filenames | Use a fresh output folder for clean demos; rerun does not delete old copies |
+| Duplicates not found | Duplicates are within the **input batch only**, not across folders or prior runs |
 
 ---
 
@@ -191,5 +195,6 @@ dataroom ui
 
 - `docs/INSTALLATION_WINDOWS.md` — setup from scratch
 - `docs/DEMO.md` — guided demo for stakeholders
+- `docs/TESTING.md` — QA / acceptance checklist
 - `docs/CALIBRATION.md` — tuning thresholds and taxonomy
 - `docs/MILESTONE_4.md` — milestone delivery summary

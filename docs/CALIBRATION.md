@@ -183,6 +183,8 @@ dataroom rerun output\run_v1
 
 Use the Streamlit **Review** tab for the same workflow with save + rerun buttons.
 
+**Ollama / Tier 3 variance:** For ambiguous documents, local scores may be below threshold and Ollama may return different confidence or category between runs. Files can move in or out of `review_queue.csv` without taxonomy changes. For stable behavior, add keywords to the taxonomy or set `REASONING_PROVIDER=local` to skip Tier 3.
+
 **When to use full `dataroom run` instead of rerun:**
 
 - Input folder changed or new files added

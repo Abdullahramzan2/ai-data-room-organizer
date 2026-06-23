@@ -200,6 +200,7 @@ If Hugging Face is blocked, download the model on a connected machine and copy t
 cd "AI-Assisted Data Room File Organizer"
 git pull   # if using git
 .venv\Scripts\activate
+# Stop dataroom ui first if running (avoids WinError 32 on dataroom.exe)
 pip install -e ".[ui]"
 dataroom doctor
 ```
@@ -221,4 +222,5 @@ System tools (Tesseract, Poppler, LibreOffice) are removed separately via Window
 
 - `docs/USER_GUIDE.md` — daily operator workflow
 - `docs/DEMO.md` — stakeholder demo script
+- `docs/TESTING.md` — QA / acceptance checklist
 - `README.md` — command reference

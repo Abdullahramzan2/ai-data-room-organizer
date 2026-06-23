@@ -468,9 +468,10 @@ After each `dataroom run`, when `output.persist_ingestion_cache` is true:
 
 ### Duplicate detection (`duplicates/`)
 
-- **Exact duplicates** — SHA-256 file hash match
+- **Exact duplicates** — SHA-256 file hash match within the **same input batch**
 - **Near duplicates** — text similarity above `near_similarity_threshold` (default 0.92)
 - Output: `duplicate_report.csv` with pair metadata
+- Does not delete or merge files; does not compare against files outside the current run input
 
 ### Extended exports (`export/`)
 
@@ -498,7 +499,7 @@ After each `dataroom run`, when `output.persist_ingestion_cache` is true:
 Optional extra `[ui]`: Streamlit app with Run, Review, Taxonomy, Doctor, Outputs tabs.
 
 - `pipeline_runner.py` — invokes `dataroom run` / `dataroom rerun` via **subprocess** (isolates heavy ML/OCR from Streamlit process)
-- `summary_display.py` — metrics + artifact list (JSON in expander)
+- `summary_display.py` — metrics, timings, and artifact list for Run/Outputs tabs
 - `widgets.py` / `pickers.py` — folder browse via tkinter
 
 Entry: `dataroom ui` → `streamlit run src/dataroom/ui/app.py`

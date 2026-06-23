@@ -24,7 +24,14 @@ Milestone 4 turns the prototype into an **operator-ready** data room tool: riche
 7. **Streamlit UI** — optional `[ui]` extra: run, review, taxonomy, doctor, outputs (`dataroom ui`)
 8. **Model setup** — `dataroom download-models` pre-caches the embedding model
 9. **Batch embeddings** — faster classification on multi-file runs
-10. **Documentation** — user guide, Windows install guide, demo script (this milestone)
+10. **Documentation** — user guide, Windows install guide, demo script, QA testing guide (this milestone)
+
+### Post-delivery polish (v0.4.0)
+
+- Streamlit UI shows metrics summary only (no raw JSON / process log panels)
+- Review queue save uses atomic write with retries; clear error if CSV is locked (e.g. open in Excel)
+- `dataroom download-models` for one-time embedding model cache
+- `.streamlit/config.toml` disables file watcher noise on Windows
 
 ---
 
@@ -151,6 +158,7 @@ The UI invokes `dataroom run` / `dataroom rerun` in a **background subprocess** 
 | `docs/USER_GUIDE.md` | Day-to-day operator workflow |
 | `docs/INSTALLATION_WINDOWS.md` | Full Windows setup for Carl's team |
 | `docs/DEMO.md` | Step-by-step demo script |
+| `docs/TESTING.md` | QA / acceptance test checklist |
 | `docs/CALIBRATION.md` | Threshold and taxonomy tuning (updated for rerun) |
 | `docs/ARCHITECTURE.md` | Technical architecture (updated for M4) |
 
@@ -170,6 +178,7 @@ The UI invokes `dataroom run` / `dataroom rerun` in a **background subprocess** 
 | `dataroom download-models` | Yes |
 | Batch embedding classification | Yes |
 | User guide + Windows install + demo docs | Yes |
+| QA testing guide (`docs/TESTING.md`) | Yes |
 | README / architecture / calibration updated | Yes |
 | Version bumped to 0.4.0 | Yes |
 
@@ -182,4 +191,4 @@ pip install -e ".[ui,dev]"
 pytest -v
 ```
 
-130 automated tests covering pipeline, duplicates, rerun, doctor, UI helpers, HTML index, and exports.
+**135** automated tests covering pipeline, duplicates, rerun, doctor, UI helpers, HTML index, review queue I/O, model setup, and exports.
