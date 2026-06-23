@@ -16,6 +16,7 @@ from dataroom.ui.helpers import (
     review_queue_path,
     taxonomy_folder_names,
 )
+from dataroom.ui.widgets import folder_path_field
 
 st.set_page_config(
     page_title="Data Room Organizer",
@@ -25,10 +26,13 @@ st.set_page_config(
 
 
 def _init_session_state() -> None:
+    root = resolve_project_root()
     if "config_path" not in st.session_state:
         st.session_state.config_path = str(default_config_path())
     if "output_dir" not in st.session_state:
-        st.session_state.output_dir = str(resolve_project_root() / "output")
+        st.session_state.output_dir = str(root / "output")
+    if "input_dir" not in st.session_state:
+        st.session_state.input_dir = str(root / "data")
 
 
 def _config_path() -> Path | None:
@@ -42,7 +46,7 @@ def _config_path() -> Path | None:
 def _sidebar() -> str:
     st.sidebar.title("Data Room Organizer")
     st.sidebar.text_input("Config YAML", key="config_path")
-    st.sidebar.text_input("Output directory", key="output_dir")
+    folder_path_field("Output directory", "output_dir", sidebar=True)
     return st.sidebar.radio(
         "Navigation",
         ["Run", "Review", "Taxonomy", "Doctor", "Outputs"],
@@ -54,7 +58,7 @@ def _page_run() -> None:
     st.header("Run pipeline")
     st.caption("Ingest, classify, organize, and export in one step. Original files are never modified.")
 
-    input_dir = st.text_input("Input folder", value=str(resolve_project_root() / "data"))
+    folder_path_field("Input folder", "input_dir")
     col1, col2, col3 = st.columns(3)
     with col1:
         rename = st.checkbox("Rename files", value=False)
@@ -64,7 +68,7 @@ def _page_run() -> None:
         no_recursive = st.checkbox("Non-recursive scan", value=False)
 
     if st.button("Run pipeline", type="primary"):
-        input_path = Path(input_dir)
+        input_path = Path(st.session_state.input_dir)
         output_path = Path(st.session_state.output_dir)
         config_path = _config_path()
         if not input_path.is_dir():
