@@ -159,3 +159,37 @@ For classify-only iteration (faster after ingestion):
 dataroom ingest "C:\path\to\folder" --output output\ingestion.json
 dataroom classify output\ingestion.json --output-dir output\run_v2 --output output\classification.json
 ```
+
+---
+
+## 5. Apply manual corrections without re-OCR
+
+After a full `dataroom run`, open `review_queue.csv`. Each row has a `corrected_folder` column (empty by default).
+
+1. Set `corrected_folder` to a valid taxonomy folder name (e.g. `01_Project_Overview`).
+2. Save the file.
+3. Rerun:
+
+```powershell
+dataroom rerun output\run_v1
+```
+
+**What rerun does:**
+
+- Reads `ingestion_cache.json` and `classification_cache.json` from the output folder
+- Applies your `corrected_folder` overrides
+- Re-organizes copies and refreshes manifest, Excel, HTML index, duplicate report
+- Does **not** re-ingest, re-OCR, or call Tier 3 again
+
+Use the Streamlit **Review** tab for the same workflow with save + rerun buttons.
+
+**When to use full `dataroom run` instead of rerun:**
+
+- Input folder changed or new files added
+- Taxonomy keywords changed and you want re-classification
+- Threshold changes in `config/default.yaml` that affect scoring
+
+**When rerun is enough:**
+
+- Analyst knows the correct folder for flagged files
+- No need to re-extract text from PDFs

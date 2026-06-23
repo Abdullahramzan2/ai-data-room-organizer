@@ -3,8 +3,8 @@
 
 | | |
 |---|---|
-| **Version** | 0.2.0 |
-| **Milestone** | M1 Ingestion + M2 Prototype |
+| **Version** | 0.4.0 |
+| **Milestone** | M1 Ingestion + M2 Prototype + M3 Enterprise + M4 Production |
 | **Status** | Delivered |
 | **Date** | June 2026 |
 | **Client** | Carl Quesinberry |
@@ -283,7 +283,9 @@ No silent misclassification — uncertain files are always flagged or queued.
 | `legacy_office` | `libreoffice_cmd`, `enable_com`, `conversion_timeout` |
 | `classification` | `excerpt_chars`, `high_threshold`, `medium_threshold`, `embedding_model`, `auto_provider_chain` |
 | `guardrails` | `allow_external_api`, `trusted_local_hosts`, `provider_allow_list`, `provider_block_list` |
-| `output` | `naming_mode`, `manifest_file`, `review_queue_file`, `errors_report_file` |
+| `duplicates` | `enabled`, `hash_algorithm`, `near_similarity_threshold` |
+| `corrections` | `review_queue_corrected_folder_column` |
+| `output` | `manifest_file`, `manifest_xlsx_file`, `index_html_file`, `index_link_mode`, cache file names |
 | `paths` | `taxonomy_file`, `cache_dir` |
 
 ---
@@ -453,6 +455,77 @@ See also: `docs/MILESTONE_1.md` for the full Milestone 1 deliverables report.
 
 ---
 
+## 16. Milestone 4 — production exports and operator tooling
+
+### Pipeline cache (`pipeline/cache.py`)
+
+After each `dataroom run`, when `output.persist_ingestion_cache` is true:
+
+- `ingestion_cache.json` — documents, skipped/failed files, input directory
+- `classification_cache.json` — per-file classification results
+
+`dataroom rerun` loads these caches, applies `corrected_folder` from `review_queue.csv`, re-organizes, and re-exports without re-OCR.
+
+### Duplicate detection (`duplicates/`)
+
+- **Exact duplicates** — SHA-256 file hash match
+- **Near duplicates** — text similarity above `near_similarity_threshold` (default 0.92)
+- Output: `duplicate_report.csv` with pair metadata
+
+### Extended exports (`export/`)
+
+| Module | Output |
+|--------|--------|
+| `manifest_xlsx.py` | `manifest.xlsx` (openpyxl) |
+| `html_index.py` | `index.html` — static page with client-side search/filter |
+| `errors.py` | `errors_report.csv` (M3) |
+
+`index_link_mode`: `original` (source path), `organized` (output copy), or `relative` (path relative to output dir).
+
+### Corrections and rerun (`corrections.py`, `pipeline/rerun.py`)
+
+1. Operator sets `corrected_folder` in review queue
+2. `apply_corrections()` overrides classification rows by `original_path`
+3. `organize_files()` + `export_pipeline_outputs()` refresh all artifacts
+4. `run_summary.json` records `rerun: true` and `corrections_applied`
+
+### Doctor (`doctor/`)
+
+`dataroom doctor` runs checks: Python version, core imports, Tesseract, Poppler, LibreOffice, embedding model load, Ollama reachability, enterprise gateway ping. Returns structured `DoctorReport` with fix strings; `--json` for automation.
+
+### Streamlit UI (`ui/`)
+
+Optional extra `[ui]`: Streamlit app with Run, Review, Taxonomy, Doctor, Outputs tabs.
+
+- `pipeline_runner.py` — invokes `dataroom run` / `dataroom rerun` via **subprocess** (isolates heavy ML/OCR from Streamlit process)
+- `summary_display.py` — metrics + artifact list (JSON in expander)
+- `widgets.py` / `pickers.py` — folder browse via tkinter
+
+Entry: `dataroom ui` → `streamlit run src/dataroom/ui/app.py`
+
+### Model setup (`models_setup.py`)
+
+- `dataroom download-models` — pre-cache `all-MiniLM-L6-v2`
+- `ensure_embedding_model()` — called at pipeline start; skips download if Hugging Face cache hit
+
+### Batch embeddings (performance)
+
+`EmbeddingClassifier.classify_many()` and `ClassificationEngine.classify_batch()` encode document excerpts in batch during `run_pipeline`, reducing per-file model overhead on large folders.
+
+### M4 CLI surface
+
+```powershell
+dataroom run
+dataroom rerun
+dataroom doctor
+dataroom download-models
+dataroom ui
+```
+
+See `docs/MILESTONE_4.md`, `docs/USER_GUIDE.md`.
+
+---
+
 ## Document revision history
 
 | Version | Date | Changes |
@@ -460,3 +533,4 @@ See also: `docs/MILESTONE_1.md` for the full Milestone 1 deliverables report.
 | 0.1.0 | June 2026 | Initial architecture document |
 | 0.2.0 | June 2026 | Refocused on Milestone 1 deliverables only; added path conventions, filesystem date notes, `MILESTONE_1.md` reference |
 | 0.3.0 | June 2026 | Added §5 confirmed classification approach (hybrid local-first + optional API) |
+| 0.4.0 | June 2026 | §16 Milestone 4: cache, duplicates, Excel/HTML exports, doctor, rerun, UI, batch embeddings |
