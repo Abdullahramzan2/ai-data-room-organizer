@@ -37,10 +37,8 @@ def download_embedding_model(model_name: str = DEFAULT_EMBEDDING_MODEL) -> str:
     from sentence_transformers import SentenceTransformer
 
     print(f"Downloading embedding model: {model_name} (~90 MB, one-time)...", file=sys.stderr, flush=True)
-    logger.info("Downloading embedding model: %s", model_name)
     SentenceTransformer(model_name)
     print(f"Embedding model ready: {model_name}", file=sys.stderr, flush=True)
-    logger.info("Embedding model ready: %s", model_name)
     return model_name
 
 
@@ -69,6 +67,8 @@ def download_all_models() -> list[str]:
 
 def download_all_models_cli() -> None:
     """Console entry point for ``dataroom-download-models``."""
-    models = download_all_models()
-    for name in models:
-        print(f"Ready: {name}")
+    from dataroom.logging_config import configure_cli_logging
+
+    configure_cli_logging(verbose=False)
+    name = ensure_embedding_model()
+    print(f"Ready: {name}")

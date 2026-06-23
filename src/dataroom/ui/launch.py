@@ -5,10 +5,12 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from dataroom.logging_config import configure_streamlit_logging
 from dataroom.ui.launch_config import streamlit_argv
 
 
 def main() -> None:
+    configure_streamlit_logging()
     try:
         import streamlit.web.cli as stcli
     except ImportError as exc:

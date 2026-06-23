@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
-import logging
 import sys
 from pathlib import Path
 from typing import Any
 
 import click
 from tqdm import tqdm
+
+from dataroom.logging_config import configure_cli_logging
 
 from dataroom.classification import ClassificationEngine
 from dataroom.classification.engine import default_cache_dir
@@ -36,8 +37,7 @@ from dataroom.ocr.tesseract import OcrConfig
 @click.group()
 @click.option("--verbose", "-v", is_flag=True, help="Enable debug logging.")
 def main(verbose: bool) -> None:
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
+    configure_cli_logging(verbose=verbose)
 
 
 @main.command("ingest")
@@ -429,16 +429,16 @@ def doctor_cmd(config_path: Path | None, as_json: bool) -> None:
     default=None,
 )
 def download_models_cmd(model_name: str | None, config_path: Path | None) -> None:
-    """Pre-download the classification embedding model (also runs after pip install -e .)."""
-    from dataroom.models_setup import DEFAULT_EMBEDDING_MODEL, download_embedding_model
+    """Pre-download the classification embedding model."""
+    from dataroom.models_setup import DEFAULT_EMBEDDING_MODEL, ensure_embedding_model
 
     if model_name:
         target = model_name
     else:
         config = load_app_config(config_path)
         target = str(config.get("classification", {}).get("embedding_model", DEFAULT_EMBEDDING_MODEL))
-    download_embedding_model(target)
-    click.echo(f"Embedding model ready: {target}")
+    ready = ensure_embedding_model(target)
+    click.echo(f"Ready: {ready}")
 
 
 @main.command("ui")
@@ -450,8 +450,10 @@ def ui_cmd(port: int) -> None:
     except ImportError as exc:
         raise click.ClickException('Install UI support: pip install -e ".[ui]"') from exc
 
+    from dataroom.logging_config import configure_streamlit_logging
     from dataroom.ui.launch_config import streamlit_argv
 
+    configure_streamlit_logging()
     app_path = Path(__file__).resolve().parent / "ui" / "app.py"
     sys.argv = streamlit_argv(app_path, port=port)
     stcli.main()

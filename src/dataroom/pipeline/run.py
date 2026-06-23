@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -57,11 +59,18 @@ def run_pipeline(
     no_recursive: bool = False,
 ) -> dict[str, Any]:
     """Run full data room pipeline. Original source files are never modified."""
+    started = time.perf_counter()
+    phase_started = started
+    timings: dict[str, float] = {}
+
     config = load_app_config(config_path)
     class_cfg = config.get("classification", {})
     from dataroom.models_setup import DEFAULT_EMBEDDING_MODEL, ensure_embedding_model
 
-    ensure_embedding_model(str(class_cfg.get("embedding_model", DEFAULT_EMBEDDING_MODEL)))
+    ensure_embedding_model(str(class_cfg.get("embedding_model", DEFAULT_EMBEDDING_MODEL)), quiet=True)
+    timings["model_ready_seconds"] = round(time.perf_counter() - phase_started, 2)
+    phase_started = time.perf_counter()
+
     input_cfg = config.get("input", {})
     ocr_cfg = config.get("ocr", {})
     ingest_cfg = config.get("ingestion", {})
@@ -99,7 +108,12 @@ def run_pipeline(
     )
     ingestion_docs = [d.to_dict() for d in ingestion_result.documents]
     _attach_file_hashes(ingestion_docs)
+    timings["ingestion_seconds"] = round(time.perf_counter() - phase_started, 2)
+    phase_started = time.perf_counter()
+
     duplicate_pairs = detect_duplicates(ingestion_docs, duplicate_config)
+    timings["duplicates_seconds"] = round(time.perf_counter() - phase_started, 2)
+    phase_started = time.perf_counter()
 
     taxonomy = load_taxonomy(config=config)
     engine = ClassificationEngine(
@@ -114,6 +128,8 @@ def run_pipeline(
         result.to_dict()
         for result in engine.classify_batch([_document_from_row(row) for row in ingestion_docs])
     ]
+    timings["classification_seconds"] = round(time.perf_counter() - phase_started, 2)
+    phase_started = time.perf_counter()
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -141,8 +157,10 @@ def run_pipeline(
         taxonomy,
         rename=rename,
     )
+    timings["organize_seconds"] = round(time.perf_counter() - phase_started, 2)
+    phase_started = time.perf_counter()
 
-    return export_pipeline_outputs(
+    summary = export_pipeline_outputs(
         output_dir=output_dir,
         config=config,
         ingestion_docs=ingestion_docs,
@@ -160,5 +178,14 @@ def run_pipeline(
             "audit_log": str(guardrails.resolve_audit_path(output_dir) or ""),
             "ingestion_cache": str(ingestion_cache_path) if persist_cache else "",
             "rerun": False,
+            "timings": timings,
         },
     )
+    timings["export_seconds"] = round(time.perf_counter() - phase_started, 2)
+    timings["total_seconds"] = round(time.perf_counter() - started, 2)
+    summary["timings"] = timings
+    (output_dir / "run_summary.json").write_text(
+        json.dumps(summary, indent=2),
+        encoding="utf-8",
+    )
+    return summary

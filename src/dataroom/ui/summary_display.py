@@ -26,6 +26,24 @@ def display_run_summary(summary: dict[str, Any], *, title: str = "Run summary") 
     if summary.get("rerun"):
         st.info(f"Rerun — {summary.get('corrections_applied', 0)} correction(s) applied.")
 
+    timings = summary.get("timings") or {}
+    if timings:
+        st.markdown("**Timing (seconds)**")
+        timing_labels = [
+            ("Ingestion (OCR/extract)", "ingestion_seconds"),
+            ("Classification", "classification_seconds"),
+            ("Duplicates", "duplicates_seconds"),
+            ("Organize", "organize_seconds"),
+            ("Export", "export_seconds"),
+            ("Total", "total_seconds"),
+        ]
+        cols = st.columns(3)
+        shown = 0
+        for label, key in timing_labels:
+            if key in timings:
+                cols[shown % 3].metric(label, timings[key])
+                shown += 1
+
     st.markdown("**Paths**")
     path_rows = [
         ("Input", summary.get("input_dir", "")),
