@@ -142,4 +142,6 @@ output:
   processing_log_file: processing_log.json
   progress_file: run_progress.json
   admin_folder: "00_Admin_and_Index"
-  mirror_admin_artifacts: true
+  source_auth_matrix_file: source_authentication_matrix.csv
+  # When false (default), Carl admin deliverables live only under 00_Admin_and_Index.
+  keep_admin_artifacts_at_root: false

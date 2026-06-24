@@ -137,33 +137,33 @@ def test_export_pipeline_writes_classification_log(tmp_path: Path):
     assert rows[0]["file_name"] == "doc.txt"
 
 
-def test_finalize_run_exports_writes_processing_log_and_admin_mirror(tmp_path: Path):
+def test_finalize_run_exports_writes_processing_log_to_admin(tmp_path: Path):
     output_dir = tmp_path / "out"
-    output_dir.mkdir()
-    manifest = output_dir / "manifest.csv"
+    admin_dir = output_dir / "00_Admin_and_Index"
+    admin_dir.mkdir(parents=True)
+    manifest = admin_dir / "manifest.csv"
     manifest.write_text("file_name\na.txt\n", encoding="utf-8")
-    classification_log = output_dir / "classification_log.csv"
+    classification_log = admin_dir / "classification_log.csv"
     classification_log.write_text("file_name\na.txt\n", encoding="utf-8")
-    run_summary = output_dir / "run_summary.json"
-    run_summary.write_text("{}", encoding="utf-8")
+    (output_dir / "run_summary.json").write_text("{}", encoding="utf-8")
 
     summary = {
         "output_dir": str(output_dir),
         "processed": 1,
         "manifest": str(manifest),
-        "manifest_xlsx": str(output_dir / "manifest.xlsx"),
-        "review_queue": str(output_dir / "review_queue.csv"),
-        "duplicate_report": str(output_dir / "duplicate_report.csv"),
-        "errors_report": str(output_dir / "errors_report.csv"),
-        "index_html": str(output_dir / "index.html"),
+        "manifest_xlsx": str(admin_dir / "manifest.xlsx"),
+        "review_queue": str(admin_dir / "review_queue.csv"),
+        "duplicate_report": str(admin_dir / "duplicate_report.csv"),
+        "errors_report": str(admin_dir / "errors_report.csv"),
+        "index_html": str(admin_dir / "index.html"),
         "classification_log": str(classification_log),
+        "source_auth_matrix": str(admin_dir / "source_authentication_matrix.csv"),
     }
     for name in ("manifest.xlsx", "review_queue.csv", "duplicate_report.csv", "errors_report.csv", "index.html"):
-        (output_dir / name).write_text("x", encoding="utf-8")
+        (admin_dir / name).write_text("x", encoding="utf-8")
 
     config = {
         "output": {
-            "mirror_admin_artifacts": True,
             "admin_folder": "00_Admin_and_Index",
             "processing_log_file": "processing_log.json",
         }
@@ -175,12 +175,10 @@ def test_finalize_run_exports_writes_processing_log_and_admin_mirror(tmp_path: P
         run_context={"started_at": "2026-06-11T12:00:00+00:00"},
     )
 
-    admin_dir = output_dir / "00_Admin_and_Index"
-    assert admin_dir.is_dir()
-    assert (admin_dir / "manifest.csv").is_file()
-    assert (admin_dir / "classification_log.csv").is_file()
     assert (admin_dir / "processing_log.json").is_file()
-    assert result["admin_mirrored_count"] >= 5
+    assert (admin_dir / "run_summary.json").is_file()
+    assert result["admin_artifact_count"] >= 5
+    assert not (output_dir / "processing_log.json").is_file()
 
-    payload = json.loads((output_dir / "processing_log.json").read_text(encoding="utf-8"))
+    payload = json.loads((admin_dir / "processing_log.json").read_text(encoding="utf-8"))
     assert payload["counts"]["processed"] == 1

@@ -126,6 +126,7 @@ def build_processing_log(
             "index_html": summary.get("index_html", ""),
             "classification_log": summary.get("classification_log", ""),
             "processing_log": summary.get("processing_log", ""),
+            "source_auth_matrix": summary.get("source_auth_matrix", ""),
             "run_summary": str(
                 Path(str(summary.get("output_dir") or ".")) / "run_summary.json"
             ),

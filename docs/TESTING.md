@@ -28,7 +28,7 @@ dataroom run "C:\path\to\sample\folder" --output-dir output\qa_full
 | `run_summary.json` | `processed` > 0, paths set |
 | Taxonomy folders | Copies under `00_…`–`19_…` |
 | Artifacts | `manifest.csv`, `manifest.xlsx`, `index.html`, `review_queue.csv`, `duplicate_report.csv`, `errors_report.csv`, `classification_log.csv`, `processing_log.json`, `audit_log.jsonl` |
-| Admin mirror | Copies of manifest, review queue, duplicate report, errors, index, logs under `00_Admin_and_Index/` |
+| Admin folder | Carl deliverables under `00_Admin_and_Index/` only (not duplicated at output root) |
 | Caches | `ingestion_cache.json`, `classification_cache.json` |
 | Originals | Source folder unchanged |
 

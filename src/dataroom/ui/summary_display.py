@@ -31,8 +31,10 @@ def _render_summary_body(summary: dict[str, Any]) -> None:
         "Failed",
         int(summary.get("ingestion_failed_count", 0)) + int(summary.get("organize_failed_count", 0)),
     )
-    if summary.get("admin_mirrored_count") is not None:
-        c8.metric("Admin mirrored", summary.get("admin_mirrored_count", 0))
+    if summary.get("admin_artifact_count") is not None:
+        c8.metric("Admin files (00)", summary.get("admin_artifact_count", 0))
+    elif summary.get("admin_mirrored_count") is not None:
+        c8.metric("Admin files (00)", summary.get("admin_mirrored_count", 0))
 
     flags: list[str] = []
     if summary.get("rename"):
@@ -86,6 +88,7 @@ def _render_summary_body(summary: dict[str, Any]) -> None:
         ("Errors report", summary.get("errors_report")),
         ("Classification log", summary.get("classification_log")),
         ("Processing log", summary.get("processing_log")),
+        ("Source auth matrix", summary.get("source_auth_matrix")),
         ("Audit log (API)", summary.get("audit_log")),
     ]
     existing: list[tuple[str, str, bool]] = []

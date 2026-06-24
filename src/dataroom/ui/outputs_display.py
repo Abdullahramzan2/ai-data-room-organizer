@@ -88,10 +88,10 @@ def display_admin_mirror_panel(summary: dict[str, Any]) -> None:
 
     st.subheader("Admin folder mirror")
     st.caption(
-        f"Artifacts copied to `{admin_dir.name}/` per Carl spec (folder 00 — admin and index outputs)."
+        f"Carl folder 00 deliverables in `{admin_dir.name}/` — master index, manifest, logs, review queue, duplicate report, source auth matrix."
     )
-    mirrored = int(summary.get("admin_mirrored_count") or len(files))
-    st.metric("Mirrored files", mirrored)
+    mirrored = int(summary.get("admin_artifact_count") or summary.get("admin_mirrored_count") or len(files))
+    st.metric("Admin files in folder 00", mirrored)
     st.dataframe(
         pd.DataFrame(files),
         hide_index=True,

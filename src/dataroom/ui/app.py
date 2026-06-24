@@ -23,6 +23,7 @@ from dataroom.ui.helpers import (
     review_queue_path,
     taxonomy_folder_names,
 )
+from dataroom.export.admin_outputs import resolve_artifact_path
 from dataroom.ui.doctor_display import display_doctor_report
 from dataroom.ui.outputs_display import (
     display_admin_mirror_panel,
@@ -312,7 +313,13 @@ def _page_outputs() -> None:
             height=min(420, 38 + len(artifacts) * 35),
         )
 
-    index_path = output_dir / config.get("output", {}).get("index_html_file", "index.html")
+    index_path = resolve_artifact_path(
+        output_dir,
+        config,
+        summary_key="index_html",
+        default_name=str(config.get("output", {}).get("index_html_file", "index.html")),
+        summary=summary,
+    )
     if index_path.is_file():
         st.markdown(f"**HTML index:** `{index_path}`")
         st.caption("Open in your browser — includes search, snippet column, and duplicate/review filters.")

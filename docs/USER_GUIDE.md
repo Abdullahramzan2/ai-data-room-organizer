@@ -69,7 +69,7 @@ Open the output folder:
 
 Organized copies live in subfolders `00_…` through `19_…` under the output directory.
 
-**Admin mirror:** When `output.mirror_admin_artifacts` is enabled (default), copies of manifest, review queue, duplicate report, errors, index, `run_summary.json`, `classification_log.csv`, and `processing_log.json` are also placed in `00_Admin_and_Index/` inside the output tree. Root copies remain for CLI/UI paths.
+**Admin folder (`00_Admin_and_Index/`):** Carl spec admin deliverables are written here — master index (`index.html`), manifest, classification log, review queue, duplicate report, source authentication matrix, errors report, and processing log. Operational caches and `run_summary.json` stay at the output root for the tool; a copy of `run_summary.json` is also placed in folder 00.
 
 ---
 

@@ -1,6 +1,11 @@
 """Export manifest and review queue CSV files."""
 
-from dataroom.export.admin_outputs import admin_folder_name, mirror_admin_artifacts
+from dataroom.export.admin_outputs import (
+    admin_folder_name,
+    copy_run_summary_to_admin,
+    resolve_admin_artifact_paths,
+    resolve_artifact_path,
+)
 from dataroom.export.classification_log import (
     CLASSIFICATION_LOG_COLUMNS,
     build_classification_log_rows,
@@ -26,7 +31,9 @@ __all__ = [
     "build_manifest_rows",
     "build_organize_error_rows",
     "build_processing_log",
-    "mirror_admin_artifacts",
+    "copy_run_summary_to_admin",
+    "resolve_admin_artifact_paths",
+    "resolve_artifact_path",
     "write_classification_log_csv",
     "write_errors_report_csv",
     "write_html_index",

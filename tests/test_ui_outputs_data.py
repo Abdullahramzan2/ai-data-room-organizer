@@ -100,4 +100,5 @@ def test_list_output_artifacts_includes_audit_and_logs(tmp_path: Path):
     assert "classification_log.csv" in labels
     assert "processing_log.json" in labels
     assert "audit_log.jsonl" in labels
-    assert "00_Admin_and_Index/ (mirror)" in labels
+    assert "00_Admin_and_Index/ (mirror)" not in labels
+    assert "00_Admin_and_Index/" in labels

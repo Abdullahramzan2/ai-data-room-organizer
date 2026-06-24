@@ -9,6 +9,7 @@ from typing import Any
 
 from dataroom.config import load_app_config, load_taxonomy, resolve_project_root
 from dataroom.corrections import apply_corrections, load_corrections_from_review_queue
+from dataroom.export.admin_outputs import resolve_artifact_path
 from dataroom.duplicates import detect_duplicates, load_duplicate_config
 from dataroom.duplicates.report import pairs_to_rows
 from dataroom.duplicates.review_flags import apply_duplicate_review_flags
@@ -59,7 +60,12 @@ def run_rerun(
         classification_cache_path = output_dir / output_cfg.get(
             "classification_cache_file", "classification_cache.json"
         )
-        review_path = output_dir / output_cfg.get("review_queue_file", "review_queue.csv")
+        review_path = resolve_artifact_path(
+            output_dir,
+            config,
+            summary_key="review_queue",
+            default_name=str(output_cfg.get("review_queue_file", "review_queue.csv")),
+        )
 
         if not ingestion_cache_path.is_file():
             raise RerunError(f"Missing ingestion cache: {ingestion_cache_path}")

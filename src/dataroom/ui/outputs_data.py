@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from dataroom.config import load_app_config
+from dataroom.export.admin_outputs import resolve_artifact_path
 from dataroom.ui.helpers import load_run_summary
 
 MANIFEST_PREVIEW_COLUMNS = [
@@ -26,9 +27,13 @@ def manifest_csv_path(output_dir: Path, config: dict[str, Any] | None = None) ->
     config = config or load_app_config()
     output_cfg = config.get("output", {}) or {}
     summary = load_run_summary(output_dir)
-    if summary and summary.get("manifest"):
-        return Path(str(summary["manifest"]))
-    return output_dir / str(output_cfg.get("manifest_file", "manifest.csv"))
+    return resolve_artifact_path(
+        output_dir,
+        config,
+        summary_key="manifest",
+        default_name=str(output_cfg.get("manifest_file", "manifest.csv")),
+        summary=summary,
+    )
 
 
 def load_manifest_rows(

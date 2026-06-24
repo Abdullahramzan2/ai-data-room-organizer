@@ -17,7 +17,11 @@ from dataroom.export import (
     write_manifest_xlsx,
     write_review_queue_csv,
 )
-from dataroom.export.admin_outputs import admin_folder_name, mirror_admin_artifacts
+from dataroom.export.admin_outputs import (
+    copy_run_summary_to_admin,
+    keep_admin_artifacts_at_root,
+    resolve_admin_artifact_paths,
+)
 from dataroom.export.classification_log import (
     build_classification_log_rows,
     build_processing_log,
@@ -26,11 +30,24 @@ from dataroom.export.classification_log import (
     write_processing_log,
 )
 from dataroom.duplicates import write_duplicate_report_csv
+from dataroom.export.source_auth_matrix import write_source_authentication_matrix
 from dataroom.organizer.models import OrganizeResult
 from dataroom.pipeline.cache import (
     build_classification_cache_payload,
     write_classification_cache,
 )
+
+
+def _maybe_copy_to_root(admin_path: Path, output_dir: Path, config: dict[str, Any]) -> None:
+    """Optional legacy copy at output root when keep_admin_artifacts_at_root is enabled."""
+    if not keep_admin_artifacts_at_root(config):
+        return
+    if not admin_path.is_file():
+        return
+    import shutil
+
+    dest = output_dir / admin_path.name
+    shutil.copy2(admin_path, dest)
 
 
 def export_pipeline_outputs(
@@ -61,15 +78,15 @@ def export_pipeline_outputs(
         organize_results=organized,
         duplicate_pairs=duplicate_pairs,
     )
-    manifest_path = output_dir / output_cfg.get("manifest_file", "manifest.csv")
-    manifest_xlsx_path = output_dir / output_cfg.get("manifest_xlsx_file", "manifest.xlsx")
-    review_path = output_dir / output_cfg.get("review_queue_file", "review_queue.csv")
-    errors_path = output_dir / output_cfg.get("errors_report_file", "errors_report.csv")
-    duplicate_path = output_dir / output_cfg.get("duplicate_report_file", "duplicate_report.csv")
-    index_html_path = output_dir / output_cfg.get("index_html_file", "index.html")
-    classification_log_path = output_dir / output_cfg.get(
-        "classification_log_file", "classification_log.csv"
-    )
+    admin_paths = resolve_admin_artifact_paths(output_dir, config)
+    manifest_path = admin_paths.manifest
+    manifest_xlsx_path = admin_paths.manifest_xlsx
+    review_path = admin_paths.review_queue
+    errors_path = admin_paths.errors_report
+    duplicate_path = admin_paths.duplicate_report
+    index_html_path = admin_paths.index_html
+    classification_log_path = admin_paths.classification_log
+    source_auth_path = admin_paths.source_auth_matrix
     classification_cache_path = output_dir / output_cfg.get(
         "classification_cache_file", "classification_cache.json"
     )
@@ -84,6 +101,7 @@ def export_pipeline_outputs(
         link_mode=str(output_cfg.get("index_link_mode", "original")),
         output_dir=output_dir,
     )
+    write_source_authentication_matrix(source_auth_path, manifest_rows)
 
     error_rows = build_ingestion_error_rows(skipped_files, failed_files)
     error_rows.extend(build_organize_error_rows(organized))
@@ -95,6 +113,18 @@ def export_pipeline_outputs(
         timestamp=log_timestamp,
     )
     write_classification_log_csv(classification_log_path, classification_log_rows)
+
+    for admin_file in (
+        manifest_path,
+        manifest_xlsx_path,
+        review_path,
+        duplicate_path,
+        errors_path,
+        index_html_path,
+        classification_log_path,
+        source_auth_path,
+    ):
+        _maybe_copy_to_root(admin_file, output_dir, config)
 
     if persist_classification_cache:
         write_classification_cache(
@@ -128,6 +158,7 @@ def export_pipeline_outputs(
         "duplicate_pair_count": len(duplicate_pairs),
         "index_html": str(index_html_path),
         "classification_log": str(classification_log_path),
+        "source_auth_matrix": str(source_auth_path),
         "index_link_mode": str(output_cfg.get("index_link_mode", "original")),
         "ingestion_cache": str(ingestion_cache_path) if persist_cache else "",
         "classification_cache": str(classification_cache_path) if persist_classification_cache else "",
@@ -148,29 +179,20 @@ def finalize_run_exports(
     *,
     run_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Write processing_log.json and mirror admin artifacts after run_summary is final."""
-    output_cfg = config.get("output", {})
-    processing_log_path = output_dir / output_cfg.get("processing_log_file", "processing_log.json")
+    """Write processing_log.json to folder 00 and copy run_summary into admin folder."""
+    admin_paths = resolve_admin_artifact_paths(output_dir, config)
+    processing_log_path = admin_paths.processing_log
     ctx = dict(run_context or {})
     ctx.setdefault("finished_at", utc_now_iso())
 
     payload = build_processing_log(summary=summary, run_context=ctx)
     write_processing_log(processing_log_path, payload)
     summary["processing_log"] = str(processing_log_path)
+    _maybe_copy_to_root(processing_log_path, output_dir, config)
 
-    run_summary_path = output_dir / "run_summary.json"
-    artifact_paths = {
-        "manifest": Path(str(summary.get("manifest", ""))),
-        "manifest_xlsx": Path(str(summary.get("manifest_xlsx", ""))),
-        "review_queue": Path(str(summary.get("review_queue", ""))),
-        "duplicate_report": Path(str(summary.get("duplicate_report", ""))),
-        "errors_report": Path(str(summary.get("errors_report", ""))),
-        "index_html": Path(str(summary.get("index_html", ""))),
-        "run_summary": run_summary_path,
-        "classification_log": Path(str(summary.get("classification_log", ""))),
-        "processing_log": processing_log_path,
-    }
-    mirrored = mirror_admin_artifacts(output_dir, config, artifact_paths)
-    summary["admin_folder"] = str(output_dir / admin_folder_name(config))
-    summary["admin_mirrored_count"] = len(mirrored)
+    copy_run_summary_to_admin(output_dir, config)
+    summary["admin_folder"] = str(admin_paths.admin_dir)
+    summary["admin_artifact_count"] = sum(
+        1 for path in admin_paths.admin_dir.iterdir() if path.is_file()
+    )
     return summary
