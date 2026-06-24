@@ -32,7 +32,14 @@ from dataroom.ui.outputs_display import (
     display_processing_log_panel,
 )
 from dataroom.ui.summary_display import display_run_summary
-from dataroom.ui.progress_display import LiveProgressPanel, render_duplicate_pairs_table, render_file_results_table
+from dataroom.ui.progress_display import (
+    get_live_progress_panel,
+    get_run_status_slot,
+    render_duplicate_pairs_table,
+    render_file_results_table,
+    reset_live_progress_panel,
+    update_run_status,
+)
 from dataroom.ui.widgets import folder_path_field
 
 st.set_page_config(
@@ -48,6 +55,10 @@ def _init_session_state() -> None:
         st.session_state.output_dir = str(root / "output")
     if "input_dir" not in st.session_state:
         st.session_state.input_dir = str(root / "data")
+    if "pipeline_running" not in st.session_state:
+        st.session_state.pipeline_running = False
+    if "pipeline_pending" not in st.session_state:
+        st.session_state.pipeline_pending = False
 
 
 def _config_path() -> Path:
@@ -69,24 +80,37 @@ def _sidebar() -> str:
     )
 
 
-def _render_saved_run_results(output_path: Path, config: dict) -> None:
-    """Restore file table, duplicates, and summary from the output folder (survives tab navigation)."""
-    progress = load_pipeline_progress(output_path, config)
-    summary = load_run_summary(output_path)
-    if not progress and not summary:
-        return
+def _review_queue_summary_lines(rows: list[dict[str, str]]) -> list[str]:
+    """Human-readable breakdown of why files are in the review queue."""
+    total = len(rows)
+    if total == 0:
+        return []
 
-    if progress:
-        if progress.get("status") == "complete":
-            st.success("Pipeline finished.")
-        elif progress.get("status") == "failed":
-            st.error(progress.get("error") or "Pipeline failed.")
+    duplicate = 0
+    low_confidence = 0
+    medium_confidence = 0
+    other = 0
+    for row in rows:
+        reason = str(row.get("review_reason", "")).lower()
+        if "duplicate" in reason:
+            duplicate += 1
+        elif reason.startswith("low confidence") or "low confidence (" in reason:
+            low_confidence += 1
+        elif reason.startswith("medium confidence") or "medium confidence (" in reason:
+            medium_confidence += 1
+        else:
+            other += 1
 
-        panel = LiveProgressPanel()
-        panel.update(progress, force=True)
-
-    if summary:
-        display_run_summary(summary, expanded=False)
+    lines = [f"{total} file(s) in the review queue."]
+    if duplicate:
+        lines.append(f"{duplicate} flagged for duplicate review.")
+    if low_confidence:
+        lines.append(f"{low_confidence} flagged for low confidence.")
+    if medium_confidence:
+        lines.append(f"{medium_confidence} flagged for medium confidence.")
+    if other:
+        lines.append(f"{other} flagged for other review reasons.")
+    return lines
 
 
 def _page_run() -> None:
@@ -111,37 +135,77 @@ def _page_run() -> None:
     output_path = Path(st.session_state.output_dir)
     config_path = _config_path()
     config = load_app_config(config_path)
+    input_path = Path(st.session_state.input_dir)
 
-    if st.button("Run pipeline", type="primary"):
-        input_path = Path(st.session_state.input_dir)
+    run_clicked = st.button(
+        "Run pipeline",
+        type="primary",
+        disabled=st.session_state.pipeline_running,
+    )
+
+    get_run_status_slot()
+    panel = get_live_progress_panel(output_path)
+
+    if run_clicked and not st.session_state.pipeline_running:
         if not input_path.is_dir():
             st.error(f"Input folder not found: {input_path}")
         else:
-            panel = LiveProgressPanel()
-            panel.update(None, force=True)
+            reset_live_progress_panel(output_path)
+            get_run_status_slot()
+            panel = get_live_progress_panel(output_path)
+            panel.clear()
+            st.session_state.pipeline_running = True
+            st.session_state.pipeline_pending = True
+            st.session_state.pipeline_run_options = {
+                "rename": rename,
+                "no_ocr": no_ocr,
+                "no_recursive": no_recursive,
+            }
+            update_run_status(None, starting=True)
+            st.rerun()
 
-            try:
-                from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_pipeline_subprocess
+    if st.session_state.pipeline_pending:
+        st.session_state.pipeline_pending = False
+        opts = st.session_state.get("pipeline_run_options", {})
+        try:
+            from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_pipeline_subprocess
 
-                run_pipeline_subprocess(
-                    input_path,
-                    output_path,
-                    config_path=config_path,
-                    rename=rename,
-                    no_ocr=no_ocr,
-                    no_recursive=no_recursive,
-                    on_progress=lambda snap: panel.update(snap),
-                )
-                st.session_state.pop("run_page_error", None)
-            except PipelineSubprocessError as exc:
-                st.session_state["run_page_error"] = str(exc)
-            except Exception as exc:
-                st.session_state["run_page_error"] = f"Pipeline failed: {exc}"
+            def on_progress(snapshot: dict) -> None:
+                update_run_status(snapshot)
+                panel.update(snapshot)
+
+            run_pipeline_subprocess(
+                input_path,
+                output_path,
+                config_path=config_path,
+                rename=bool(opts.get("rename")),
+                no_ocr=bool(opts.get("no_ocr")),
+                no_recursive=bool(opts.get("no_recursive")),
+                on_progress=on_progress,
+            )
+            st.session_state.pop("run_page_error", None)
+        except PipelineSubprocessError as exc:
+            st.session_state["run_page_error"] = str(exc)
+        except Exception as exc:
+            st.session_state["run_page_error"] = f"Pipeline failed: {exc}"
+        finally:
+            st.session_state.pipeline_running = False
 
     if st.session_state.get("run_page_error"):
         st.error(st.session_state["run_page_error"])
 
-    _render_saved_run_results(output_path, config)
+    if (
+        not run_clicked
+        and not st.session_state.pipeline_running
+        and not st.session_state.pipeline_pending
+    ):
+        progress = load_pipeline_progress(output_path, config)
+        summary = load_run_summary(output_path)
+        if progress:
+            update_run_status(progress, force=True)
+            panel.update(progress, force=True)
+        if summary:
+            display_run_summary(summary, expanded=False)
 
 
 def _save_review_queue(queue_path: Path, edited) -> bool:
@@ -157,7 +221,7 @@ def _save_review_queue(queue_path: Path, edited) -> bool:
 def _page_review() -> None:
     st.header("Review queue")
     st.caption(
-        "Set corrected_folder for flagged files (including duplicate pairs), save, then rerun without re-OCR."
+        "Set corrected folder for flagged files (including duplicate pairs), save, then rerun without re-OCR."
     )
 
     output_dir = Path(st.session_state.output_dir)
@@ -176,11 +240,9 @@ def _page_review() -> None:
         st.success("Review queue is empty — no files need review.")
         return
 
-    duplicate_count = sum(
-        1 for row in rows if "duplicate" in str(row.get("review_reason", "")).lower()
-    )
-    if duplicate_count:
-        st.info(f"{duplicate_count} file(s) flagged for duplicate review.")
+    summary_lines = _review_queue_summary_lines(rows)
+    if summary_lines:
+        st.info("\n\n".join(summary_lines))
 
     rename_on_rerun = st.checkbox(
         "Rename files on rerun",
@@ -218,32 +280,42 @@ def _page_review() -> None:
                 st.success(f"Saved {queue_path}")
 
     with col_rerun:
-        if st.button("Rerun with corrections", type="primary"):
+        if st.button(
+            "Rerun with corrections",
+            type="primary",
+            disabled=st.session_state.pipeline_running,
+        ):
             if not _save_review_queue(queue_path, edited):
-                return
-            panel = LiveProgressPanel()
-            panel.update(None, force=True)
-            try:
-                from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_rerun_subprocess
+                pass
+            else:
+                panel = get_live_progress_panel(output_dir)
+                reset_live_progress_panel(output_dir)
+                panel = get_live_progress_panel(output_dir)
+                panel.clear()
+                st.session_state.pipeline_running = True
+                update_run_status(None, starting=True)
+                try:
+                    from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_rerun_subprocess
 
-                result = run_rerun_subprocess(
-                    output_dir,
-                    config_path=config_path,
-                    rename=rename_on_rerun,
-                    on_progress=lambda snap: panel.update(snap),
-                )
-            except PipelineSubprocessError as exc:
-                st.error(str(exc))
-                return
-            except Exception as exc:
-                st.error(f"Rerun failed: {exc}")
-                return
-            for warning in result.summary.get("correction_warnings", []):
-                st.warning(warning)
-            final_progress = load_pipeline_progress(output_dir, config)
-            if final_progress:
-                panel.update(final_progress, force=True)
-            display_run_summary(result.summary, title="Rerun summary", expanded=False)
+                    def on_progress(snapshot: dict) -> None:
+                        update_run_status(snapshot)
+                        panel.update(snapshot)
+
+                    result = run_rerun_subprocess(
+                        output_dir,
+                        config_path=config_path,
+                        rename=rename_on_rerun,
+                        on_progress=on_progress,
+                    )
+                    for warning in result.summary.get("correction_warnings", []):
+                        st.warning(warning)
+                    display_run_summary(result.summary, title="Rerun summary", expanded=False)
+                except PipelineSubprocessError as exc:
+                    st.error(str(exc))
+                except Exception as exc:
+                    st.error(f"Rerun failed: {exc}")
+                finally:
+                    st.session_state.pipeline_running = False
 
 
 def _page_taxonomy() -> None:

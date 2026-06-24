@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from dataroom.ui.progress_display import LiveProgressPanel, _duplicate_table_rows, _file_table_rows
+from dataroom.ui.progress_display import (
+    LiveProgressPanel,
+    _duplicate_table_rows,
+    _file_table_rows,
+    run_status_message,
+)
 
 
 def test_file_table_rows():
@@ -38,8 +43,21 @@ def test_duplicate_table_rows_uses_basenames():
     assert rows[0]["File B"] == "b.pdf"
 
 
-def test_live_progress_panel_snapshot_key_changes():
+def test_run_status_message_transitions():
+    assert run_status_message(None, starting=True) == "Starting the pipeline…"
+    assert run_status_message({"status": "running", "files": []}) == "Starting the pipeline…"
+    assert run_status_message({"status": "running", "files": [{"file_name": "a.txt"}]}) == "Pipeline is running…"
+    assert run_status_message({"status": "complete"}) == "Pipeline finished."
+
+
+def test_live_progress_panel_clear():
     panel = LiveProgressPanel()
-    assert panel._snapshot_key({"updated_at": "a", "status": "running", "files": []}) != panel._snapshot_key(
-        {"updated_at": "b", "status": "running", "files": []}
+    panel.clear()
+    assert panel._last_metrics_key is None
+
+
+def test_live_progress_panel_metrics_key_changes():
+    panel = LiveProgressPanel()
+    assert panel._metrics_key({"status": "running", "classified_count": 1}) != panel._metrics_key(
+        {"status": "running", "classified_count": 2}
     )
