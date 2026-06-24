@@ -117,6 +117,7 @@ duplicates:
   near_similarity_threshold: 0.92
   min_text_chars_for_near: 100
   max_near_pairs: 50000
+  flag_for_review: true
 
 corrections:
   review_queue_corrected_folder_column: corrected_folder

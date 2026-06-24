@@ -63,6 +63,7 @@ def build_index_entries(
 
         file_name = row.get("file_name", "")
         extension = Path(file_name).suffix.lower()
+        duplicate_status = row.get("duplicate_status", "none") or "none"
         entries.append(
             {
                 "file_name": file_name,
@@ -70,9 +71,13 @@ def build_index_entries(
                 "confidence": row.get("confidence", ""),
                 "score": float(row.get("score") or 0),
                 "extension": extension,
+                "document_type": row.get("document_type", ""),
                 "modified_at": row.get("modified_at", ""),
                 "link_url": link_url,
                 "classification_reason": row.get("classification_reason", ""),
+                "text_snippet": row.get("text_snippet", ""),
+                "duplicate_status": duplicate_status,
+                "duplicate_partner_path": row.get("duplicate_partner_path", ""),
                 "needs_review": row.get("needs_review", "false") == "true",
                 "original_path": row.get("original_path", ""),
                 "output_path": row.get("output_path", ""),
@@ -106,6 +111,8 @@ def _render_html(entries: list[dict[str, Any]], *, title: str, link_mode: str) -
     .count {{ margin: 12px 0; color: #374151; }}
     a {{ color: #1d4ed8; text-decoration: none; }}
     a:hover {{ text-decoration: underline; }}
+    .snippet {{ color: #4b5563; font-size: 12px; max-width: 280px; }}
+    .dup {{ color: #7c3aed; font-size: 12px; }}
   </style>
 </head>
 <body>
@@ -114,7 +121,7 @@ def _render_html(entries: list[dict[str, Any]], *, title: str, link_mode: str) -
   <div class="filters">
     <div>
       <label for="search">Search</label>
-      <input id="search" type="search" placeholder="File name, category, reason...">
+      <input id="search" type="search" placeholder="File name, category, reason, snippet...">
     </div>
     <div>
       <label for="category">Category</label>
@@ -127,6 +134,24 @@ def _render_html(entries: list[dict[str, Any]], *, title: str, link_mode: str) -
     <div>
       <label for="confidence">Confidence</label>
       <select id="confidence"><option value="">All levels</option></select>
+    </div>
+    <div>
+      <label for="review">Review</label>
+      <select id="review">
+        <option value="">All files</option>
+        <option value="yes">Needs review</option>
+        <option value="no">No review</option>
+      </select>
+    </div>
+    <div>
+      <label for="duplicate">Duplicates</label>
+      <select id="duplicate">
+        <option value="">All files</option>
+        <option value="has_duplicate">Has duplicate</option>
+        <option value="none">No duplicate</option>
+        <option value="exact_duplicate">Exact duplicate</option>
+        <option value="near_duplicate">Near duplicate</option>
+      </select>
     </div>
     <div>
       <label for="dateFrom">Modified from</label>
@@ -148,6 +173,8 @@ def _render_html(entries: list[dict[str, Any]], *, title: str, link_mode: str) -
         <th data-key="extension">Type</th>
         <th data-key="modified_at">Modified</th>
         <th>Reason</th>
+        <th>Snippet</th>
+        <th>Duplicate</th>
       </tr>
     </thead>
     <tbody id="rows"></tbody>
@@ -186,12 +213,19 @@ def _render_html(entries: list[dict[str, Any]], *, title: str, link_mode: str) -
       const category = document.getElementById("category").value;
       const extension = document.getElementById("extension").value;
       const confidence = document.getElementById("confidence").value;
+      const review = document.getElementById("review").value;
+      const duplicate = document.getElementById("duplicate").value;
       const dateFrom = document.getElementById("dateFrom").value;
       const dateTo = document.getElementById("dateTo").value;
 
       if (category && entry.category_folder !== category) return false;
       if (extension && entry.extension !== extension) return false;
       if (confidence && entry.confidence !== confidence) return false;
+      if (review === "yes" && !entry.needs_review) return false;
+      if (review === "no" && entry.needs_review) return false;
+      if (duplicate === "has_duplicate" && entry.duplicate_status === "none") return false;
+      if (duplicate === "none" && entry.duplicate_status !== "none") return false;
+      if (duplicate && duplicate !== "has_duplicate" && duplicate !== "none" && entry.duplicate_status !== duplicate) return false;
 
       if (dateFrom || dateTo) {{
         const modified = entryDate(entry.modified_at);
@@ -205,8 +239,11 @@ def _render_html(entries: list[dict[str, Any]], *, title: str, link_mode: str) -
         entry.file_name,
         entry.category_folder,
         entry.classification_reason,
+        entry.text_snippet,
+        entry.document_type,
         entry.original_path,
-        entry.output_path
+        entry.output_path,
+        entry.duplicate_partner_path
       ].join(" ").toLowerCase();
       return haystack.includes(q);
     }}
@@ -244,6 +281,18 @@ def _render_html(entries: list[dict[str, Any]], *, title: str, link_mode: str) -
         tr.appendChild(cell(entry.extension));
         tr.appendChild(cell(entry.modified_at ? entry.modified_at.slice(0, 10) : ""));
         tr.appendChild(cell(entry.classification_reason));
+        const snippetCell = document.createElement("td");
+        snippetCell.className = "snippet";
+        snippetCell.textContent = entry.text_snippet || "";
+        snippetCell.title = entry.text_snippet || "";
+        tr.appendChild(snippetCell);
+        const dupCell = document.createElement("td");
+        dupCell.className = "dup";
+        if (entry.duplicate_status && entry.duplicate_status !== "none") {{
+          dupCell.textContent = entry.duplicate_status.replace(/_/g, " ");
+          dupCell.title = entry.duplicate_partner_path || "";
+        }}
+        tr.appendChild(dupCell);
         tbody.appendChild(tr);
       }}
       document.getElementById("count").textContent = `Showing ${{filtered.length}} of ${{entries.length}} files`;
@@ -255,7 +304,7 @@ def _render_html(entries: list[dict[str, Any]], *, title: str, link_mode: str) -
       return td;
     }}
 
-    for (const id of ["search", "category", "extension", "confidence", "dateFrom", "dateTo"]) {{
+    for (const id of ["search", "category", "extension", "confidence", "review", "duplicate", "dateFrom", "dateTo"]) {{
       document.getElementById(id).addEventListener("input", render);
       document.getElementById(id).addEventListener("change", render);
     }}

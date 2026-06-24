@@ -9,6 +9,7 @@ from dataroom.config import load_app_config, load_taxonomy
 from dataroom.corrections import apply_corrections, load_corrections_from_review_queue
 from dataroom.duplicates import detect_duplicates, load_duplicate_config
 from dataroom.duplicates.report import pairs_to_rows
+from dataroom.duplicates.review_flags import apply_duplicate_review_flags
 from dataroom.organizer import organize_files
 from dataroom.pipeline.cache import load_classification_cache, load_ingestion_cache
 from dataroom.pipeline.outputs import export_pipeline_outputs
@@ -104,11 +105,17 @@ def run_rerun(
                 )
 
         tracker.set_phase("duplicates")
+        duplicate_config = load_duplicate_config(config)
         duplicate_pairs = detect_duplicates(
             ingestion_docs,
-            load_duplicate_config(config),
+            duplicate_config,
         )
         tracker.set_duplicate_pairs(pairs_to_rows(duplicate_pairs))
+        apply_duplicate_review_flags(
+            classification_results,
+            duplicate_pairs,
+            flag_for_review=duplicate_config.flag_for_review,
+        )
 
         tracker.set_phase("organizing")
         organized = organize_files(

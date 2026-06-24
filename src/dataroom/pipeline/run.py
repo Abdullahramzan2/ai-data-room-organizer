@@ -13,6 +13,7 @@ from dataroom.classification.runtime import build_classification_runtime
 from dataroom.config import load_app_config, load_taxonomy
 from dataroom.duplicates import detect_duplicates, load_duplicate_config
 from dataroom.duplicates.report import pairs_to_rows
+from dataroom.duplicates.review_flags import apply_duplicate_review_flags
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
 from dataroom.ingestion.hashing import sha256_file
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
@@ -176,6 +177,11 @@ def run_pipeline(
                 on_classified=on_classified,
             )
         ]
+        apply_duplicate_review_flags(
+            classification_results,
+            duplicate_pairs,
+            flag_for_review=duplicate_config.flag_for_review,
+        )
         timings["classification_seconds"] = round(time.perf_counter() - phase_started, 2)
         phase_started = time.perf_counter()
 
