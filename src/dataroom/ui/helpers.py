@@ -84,11 +84,22 @@ def list_output_artifacts(
             "classification_cache",
             output_cfg.get("classification_cache_file", "classification_cache.json"),
         ),
+        (
+            "classification_log.csv",
+            "classification_log",
+            output_cfg.get("classification_log_file", "classification_log.csv"),
+        ),
+        (
+            "processing_log.json",
+            "processing_log",
+            output_cfg.get("processing_log_file", "processing_log.json"),
+        ),
         ("run_summary.json", None, "run_summary.json"),
         ("run_progress.json", None, output_cfg.get("progress_file", "run_progress.json")),
     ]
 
     artifacts: list[dict[str, str]] = []
+    admin_folder = str(output_cfg.get("admin_folder", "00_Admin_and_Index"))
     for label, summary_key, default_name in artifact_defs:
         if summary and summary_key and summary.get(summary_key):
             path = Path(str(summary[summary_key]))
@@ -99,6 +110,16 @@ def list_output_artifacts(
                 "artifact": label,
                 "path": str(path),
                 "exists": "yes" if path.is_file() else "no",
+            }
+        )
+
+    if summary and summary.get("admin_folder"):
+        admin_dir = Path(str(summary["admin_folder"]))
+        artifacts.append(
+            {
+                "artifact": f"{admin_folder}/ (mirror)",
+                "path": str(admin_dir),
+                "exists": "yes" if admin_dir.is_dir() else "no",
             }
         )
     return artifacts

@@ -138,4 +138,8 @@ output:
   persist_ingestion_cache: true
   ingestion_cache_file: ingestion_cache.json
   classification_cache_file: classification_cache.json
+  classification_log_file: classification_log.csv
+  processing_log_file: processing_log.json
   progress_file: run_progress.json
+  admin_folder: "00_Admin_and_Index"
+  mirror_admin_artifacts: true

@@ -4,16 +4,18 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from dataroom.classification import ClassificationEngine
 from dataroom.classification.engine import default_cache_dir
 from dataroom.classification.runtime import build_classification_runtime
-from dataroom.config import load_app_config, load_taxonomy
+from dataroom.config import load_app_config, load_taxonomy, resolve_project_root
 from dataroom.duplicates import detect_duplicates, load_duplicate_config
 from dataroom.duplicates.report import pairs_to_rows
 from dataroom.duplicates.review_flags import apply_duplicate_review_flags
+from dataroom.export.classification_log import file_content_fingerprint, utc_now_iso
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
 from dataroom.ingestion.hashing import sha256_file
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
@@ -25,7 +27,7 @@ from dataroom.pipeline.cache import (
     build_ingestion_cache_payload,
     write_ingestion_cache,
 )
-from dataroom.pipeline.outputs import export_pipeline_outputs
+from dataroom.pipeline.outputs import export_pipeline_outputs, finalize_run_exports
 from dataroom.pipeline.progress import RunProgressTracker
 
 
@@ -65,6 +67,7 @@ def run_pipeline(
 ) -> dict[str, Any]:
     """Run full data room pipeline. Original source files are never modified."""
     started = time.perf_counter()
+    started_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     phase_started = started
     timings: dict[str, float] = {}
 
@@ -216,6 +219,21 @@ def run_pipeline(
         phase_started = time.perf_counter()
 
         tracker.set_phase("exporting")
+        root = resolve_project_root()
+        config_fp_path = config_path or (root / "config" / "default.yaml")
+        tax_rel = config.get("paths", {}).get("taxonomy_file", "taxonomy/real_estate_development.yaml")
+        tax_path = root / tax_rel
+        run_context = {
+            "started_at": started_at,
+            "ocr_enabled": ocr_config.enabled,
+            "recursive": recursive,
+            "rename": rename,
+            "taxonomy_name": str(taxonomy.get("name", "")),
+            "taxonomy_version": str(taxonomy.get("version", "")),
+            "taxonomy_fingerprint": file_content_fingerprint(tax_path),
+            "config_fingerprint": file_content_fingerprint(config_fp_path),
+            "reasoning_provider": reasoning_provider.provider_id,
+        }
         summary = export_pipeline_outputs(
             output_dir=output_dir,
             config=config,
@@ -228,18 +246,33 @@ def run_pipeline(
             rename=rename,
             input_dir=input_dir,
             persist_classification_cache=persist_cache,
+            run_context=run_context,
             extra_summary={
                 "reasoning_provider": reasoning_provider.provider_id,
                 "guardrails_external_api": guardrails.config.allow_external_api,
                 "audit_log": str(guardrails.resolve_audit_path(output_dir) or ""),
                 "ingestion_cache": str(ingestion_cache_path) if persist_cache else "",
                 "rerun": False,
-                "timings": timings,
+                "rename": rename,
+                "ocr_enabled": ocr_config.enabled,
+                "recursive": recursive,
             },
         )
         timings["export_seconds"] = round(time.perf_counter() - phase_started, 2)
         timings["total_seconds"] = round(time.perf_counter() - started, 2)
         summary["timings"] = timings
+        (output_dir / "run_summary.json").write_text(
+            json.dumps(summary, indent=2),
+            encoding="utf-8",
+        )
+        run_context["finished_at"] = utc_now_iso()
+        run_context["timings"] = timings
+        summary = finalize_run_exports(
+            output_dir,
+            config,
+            summary,
+            run_context=run_context,
+        )
         (output_dir / "run_summary.json").write_text(
             json.dumps(summary, indent=2),
             encoding="utf-8",

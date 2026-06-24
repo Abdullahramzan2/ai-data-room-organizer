@@ -17,6 +17,14 @@ from dataroom.export import (
     write_manifest_xlsx,
     write_review_queue_csv,
 )
+from dataroom.export.admin_outputs import admin_folder_name, mirror_admin_artifacts
+from dataroom.export.classification_log import (
+    build_classification_log_rows,
+    build_processing_log,
+    utc_now_iso,
+    write_classification_log_csv,
+    write_processing_log,
+)
 from dataroom.duplicates import write_duplicate_report_csv
 from dataroom.organizer.models import OrganizeResult
 from dataroom.pipeline.cache import (
@@ -39,6 +47,7 @@ def export_pipeline_outputs(
     input_dir: Path | None = None,
     persist_classification_cache: bool = True,
     extra_summary: dict[str, Any] | None = None,
+    run_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Write manifests, review queue, caches, and run_summary.json."""
     output_cfg = config.get("output", {})
@@ -58,6 +67,9 @@ def export_pipeline_outputs(
     errors_path = output_dir / output_cfg.get("errors_report_file", "errors_report.csv")
     duplicate_path = output_dir / output_cfg.get("duplicate_report_file", "duplicate_report.csv")
     index_html_path = output_dir / output_cfg.get("index_html_file", "index.html")
+    classification_log_path = output_dir / output_cfg.get(
+        "classification_log_file", "classification_log.csv"
+    )
     classification_cache_path = output_dir / output_cfg.get(
         "classification_cache_file", "classification_cache.json"
     )
@@ -76,6 +88,13 @@ def export_pipeline_outputs(
     error_rows = build_ingestion_error_rows(skipped_files, failed_files)
     error_rows.extend(build_organize_error_rows(organized))
     write_errors_report_csv(errors_path, error_rows)
+
+    log_timestamp = str((run_context or {}).get("started_at") or utc_now_iso())
+    classification_log_rows = build_classification_log_rows(
+        manifest_rows,
+        timestamp=log_timestamp,
+    )
+    write_classification_log_csv(classification_log_path, classification_log_rows)
 
     if persist_classification_cache:
         write_classification_cache(
@@ -108,6 +127,7 @@ def export_pipeline_outputs(
         "duplicate_report": str(duplicate_path),
         "duplicate_pair_count": len(duplicate_pairs),
         "index_html": str(index_html_path),
+        "classification_log": str(classification_log_path),
         "index_link_mode": str(output_cfg.get("index_link_mode", "original")),
         "ingestion_cache": str(ingestion_cache_path) if persist_cache else "",
         "classification_cache": str(classification_cache_path) if persist_classification_cache else "",
@@ -118,4 +138,39 @@ def export_pipeline_outputs(
 
     summary_path = output_dir / "run_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    return summary
+
+
+def finalize_run_exports(
+    output_dir: Path,
+    config: dict[str, Any],
+    summary: dict[str, Any],
+    *,
+    run_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Write processing_log.json and mirror admin artifacts after run_summary is final."""
+    output_cfg = config.get("output", {})
+    processing_log_path = output_dir / output_cfg.get("processing_log_file", "processing_log.json")
+    ctx = dict(run_context or {})
+    ctx.setdefault("finished_at", utc_now_iso())
+
+    payload = build_processing_log(summary=summary, run_context=ctx)
+    write_processing_log(processing_log_path, payload)
+    summary["processing_log"] = str(processing_log_path)
+
+    run_summary_path = output_dir / "run_summary.json"
+    artifact_paths = {
+        "manifest": Path(str(summary.get("manifest", ""))),
+        "manifest_xlsx": Path(str(summary.get("manifest_xlsx", ""))),
+        "review_queue": Path(str(summary.get("review_queue", ""))),
+        "duplicate_report": Path(str(summary.get("duplicate_report", ""))),
+        "errors_report": Path(str(summary.get("errors_report", ""))),
+        "index_html": Path(str(summary.get("index_html", ""))),
+        "run_summary": run_summary_path,
+        "classification_log": Path(str(summary.get("classification_log", ""))),
+        "processing_log": processing_log_path,
+    }
+    mirrored = mirror_admin_artifacts(output_dir, config, artifact_paths)
+    summary["admin_folder"] = str(output_dir / admin_folder_name(config))
+    summary["admin_mirrored_count"] = len(mirrored)
     return summary

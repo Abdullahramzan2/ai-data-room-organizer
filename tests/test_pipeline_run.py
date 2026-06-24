@@ -27,6 +27,10 @@ def test_run_pipeline(tmp_path: Path):
     assert (output_dir / "ingestion_cache.json").is_file()
     assert (output_dir / "classification_cache.json").is_file()
     assert (output_dir / "duplicate_report.csv").is_file()
+    assert (output_dir / "classification_log.csv").is_file()
+    assert (output_dir / "processing_log.json").is_file()
+    assert (output_dir / "00_Admin_and_Index" / "manifest.csv").is_file()
+    assert (output_dir / "00_Admin_and_Index" / "classification_log.csv").is_file()
     assert (input_dir / "PSA_agreement.txt").is_file()
 
     ingestion_cache = json.loads((output_dir / "ingestion_cache.json").read_text(encoding="utf-8"))
@@ -47,3 +51,7 @@ def test_run_pipeline(tmp_path: Path):
     assert summary["index_html"].endswith("index.html")
     assert summary["index_link_mode"] == "original"
     assert summary["duplicate_pair_count"] == 0
+    assert summary["classification_log"].endswith("classification_log.csv")
+    assert summary["processing_log"].endswith("processing_log.json")
+    assert summary["admin_folder"].endswith("00_Admin_and_Index")
+    assert summary["admin_mirrored_count"] > 0
