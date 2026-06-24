@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from dataroom.organizer.models import OrganizeResult
+from dataroom.duplicates.models import DuplicatePair
+from dataroom.export.duplicate_index import build_duplicate_lookup, duplicate_fields_for_path
+from dataroom.export.manifest_fields import build_text_snippet, infer_document_type
 
 MANIFEST_COLUMNS = [
     "file_name",
@@ -23,6 +26,13 @@ MANIFEST_COLUMNS = [
     "entities",
     "needs_review",
     "needs_review_reason",
+    "duplicate_status",
+    "duplicate_partner_path",
+    "duplicate_type",
+    "duplicate_similarity",
+    "document_type",
+    "text_snippet",
+    "notes",
     "extraction_method",
     "char_count",
     "file_type_handler",
@@ -58,12 +68,14 @@ def build_manifest_rows(
     *,
     rename: bool = False,
     organize_results: list[OrganizeResult] | None = None,
+    duplicate_pairs: list[DuplicatePair] | None = None,
 ) -> list[dict[str, str]]:
     """Merge ingestion + classification (+ optional organize results) into manifest rows."""
     by_path = {row["source_path"]: row for row in classification_results}
     organize_by_path = {
         str(result.source_path): result for result in (organize_results or [])
     }
+    duplicate_lookup = build_duplicate_lookup(duplicate_pairs or [])
     rows: list[dict[str, str]] = []
 
     for doc in ingestion_docs:
@@ -115,6 +127,10 @@ def build_manifest_rows(
                 "entities": _join_list(cls.get("entities")),
                 "needs_review": str(bool(cls.get("needs_review", False))).lower(),
                 "needs_review_reason": str(cls.get("review_reason") or ""),
+                **duplicate_fields_for_path(source_path, duplicate_lookup),
+                "document_type": infer_document_type(doc, cls, handler),
+                "text_snippet": build_text_snippet(doc),
+                "notes": "",
                 "extraction_method": str(doc.get("extraction_method", "")),
                 "char_count": str(doc.get("char_count", 0)),
                 "file_type_handler": handler,

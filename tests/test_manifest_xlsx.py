@@ -3,6 +3,7 @@
 from openpyxl import load_workbook
 
 from dataroom.export import build_manifest_rows, write_manifest_xlsx
+from dataroom.export.manifest import MANIFEST_COLUMNS
 
 
 def test_write_manifest_xlsx(tmp_path):
@@ -42,8 +43,14 @@ def test_write_manifest_xlsx(tmp_path):
     ws = wb["Manifest"]
     assert ws.cell(1, 1).value == "file_name"
     assert ws.cell(2, 1).value == "psa.txt"
-    assert ws.cell(2, 25).value == "1200"
-    assert ws.cell(2, 26).value == "2026-06-01T12:00:00+00:00"
-    assert ws.cell(2, 27).value == "abc123"
+    file_size_col = MANIFEST_COLUMNS.index("file_size") + 1
+    modified_col = MANIFEST_COLUMNS.index("modified_at") + 1
+    hash_col = MANIFEST_COLUMNS.index("file_hash") + 1
+    assert ws.cell(2, file_size_col).value == "1200"
+    assert ws.cell(2, modified_col).value == "2026-06-01T12:00:00+00:00"
+    assert ws.cell(2, hash_col).value == "abc123"
     assert ws.freeze_panes == "A2"
-    assert ws.auto_filter.ref == "A1:AA2"
+    from openpyxl.utils import get_column_letter
+
+    last_col = get_column_letter(len(MANIFEST_COLUMNS))
+    assert ws.auto_filter.ref == f"A1:{last_col}2"

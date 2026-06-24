@@ -50,6 +50,7 @@ def export_pipeline_outputs(
         output_dir,
         rename=rename,
         organize_results=organized,
+        duplicate_pairs=duplicate_pairs,
     )
     manifest_path = output_dir / output_cfg.get("manifest_file", "manifest.csv")
     manifest_xlsx_path = output_dir / output_cfg.get("manifest_xlsx_file", "manifest.xlsx")
