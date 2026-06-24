@@ -77,6 +77,7 @@ def ingest_cmd(
         language=ocr_cfg.get("language", "eng"),
         pdf_dpi=ocr_cfg.get("pdf_dpi", 300),
         min_native_text_chars=ocr_cfg.get("min_native_text_chars", 50),
+        max_pdf_ocr_pages=int(ocr_cfg.get("max_pdf_ocr_pages", 200)),
         tesseract_cmd=ocr_cfg.get("tesseract_cmd"),
         poppler_path=ocr_cfg.get("poppler_path"),
     )

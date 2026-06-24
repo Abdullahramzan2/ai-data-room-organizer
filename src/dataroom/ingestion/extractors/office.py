@@ -92,12 +92,21 @@ class XlsxExtractor(BaseExtractor):
 
             wb = load_workbook(path, read_only=True, data_only=True)
             lines: list[str] = []
+            char_budget = self.max_text_chars
             for sheet in wb.worksheets:
                 lines.append(f"## Sheet: {sheet.title}")
                 for row in sheet.iter_rows(values_only=True):
                     cells = [str(c) for c in row if c is not None and str(c).strip()]
                     if cells:
-                        lines.append("\t".join(cells))
+                        line = "\t".join(cells)
+                        if len("\n".join(lines)) + len(line) > char_budget:
+                            doc.warnings.append(
+                                f"Large spreadsheet — only the first {char_budget:,} characters were loaded"
+                            )
+                            break
+                        lines.append(line)
+                if len("\n".join(lines)) >= char_budget:
+                    break
             wb.close()
             doc.text_content = self._truncate("\n".join(lines))
         except Exception as exc:

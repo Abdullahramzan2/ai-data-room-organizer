@@ -18,6 +18,7 @@ class OcrConfig:
     language: str = "eng"
     pdf_dpi: int = 300
     min_native_text_chars: int = 50
+    max_pdf_ocr_pages: int = 200
     tesseract_cmd: str | None = None
     poppler_path: str | None = None
 
@@ -74,6 +75,7 @@ class TesseractOcr:
         self.config = config or OcrConfig()
         self._pytesseract = None
         self._available: bool | None = None
+        self.pdf_ocr_page_limit_hit = False
 
     def is_available(self) -> bool:
         if self._available is not None:
@@ -142,7 +144,15 @@ class TesseractOcr:
                 "Install Poppler and add it to PATH, or set ocr.poppler_path in config/default.yaml"
             )
             raise RuntimeError(f"PDF to image conversion failed: {exc}. {hint}") from exc
+
+        self.pdf_ocr_page_limit_hit = False
+        total_pages = len(pages)
+        limit = self.config.max_pdf_ocr_pages
+        if limit > 0 and total_pages > limit:
+            pages = pages[:limit]
+            self.pdf_ocr_page_limit_hit = True
+
         texts: list[str] = []
         for page in pages:
             texts.append(self.ocr_image(page))
-        return "\n\n".join(texts), len(pages)
+        return "\n\n".join(texts), total_pages

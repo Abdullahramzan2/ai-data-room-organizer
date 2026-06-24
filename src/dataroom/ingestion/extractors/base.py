@@ -30,6 +30,13 @@ class BaseExtractor(ABC):
             return text
         return text[: self.max_text_chars]
 
+    def _truncate_doc(self, doc: ExtractedDocument, text: str) -> str:
+        if len(text) > self.max_text_chars:
+            doc.warnings.append(
+                f"Extracted text truncated to {self.max_text_chars:,} characters for processing"
+            )
+        return self._truncate(text)
+
     def _apply_ocr_if_needed(self, doc: ExtractedDocument, path: Path, *, pdf: bool = False) -> ExtractedDocument:
         if not self.ocr or not self.ocr.config.enabled:
             return doc
@@ -50,6 +57,11 @@ class BaseExtractor(ABC):
                 ocr_text, page_count = self.ocr.ocr_pdf(path)
                 if doc.metadata.page_count is None:
                     doc.metadata.page_count = page_count
+                if self.ocr.pdf_ocr_page_limit_hit:
+                    limit = self.ocr.config.max_pdf_ocr_pages
+                    doc.warnings.append(
+                        f"Large scanned PDF — OCR applied to first {limit} of {page_count} pages"
+                    )
             else:
                 ocr_text = self.ocr.ocr_image_path(path)
             doc.ocr_text = self._truncate(ocr_text)

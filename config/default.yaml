@@ -19,13 +19,19 @@ input:
     - .txt
     - .msg
     - .eml
+    - .kml
     - .kmz
+    - .geojson
+    - .gpx
+    - .dxf
     - .dwg
 
 ocr:
   enabled: true
   # Minimum native text chars before OCR is triggered on PDFs/images
   min_native_text_chars: 50
+  # Cap OCR on very large scanned PDFs (0 = OCR every page)
+  max_pdf_ocr_pages: 200
   # Tesseract language(s); install data packs as needed
   language: eng
   # DPI for rendering PDF pages before OCR
@@ -37,7 +43,7 @@ ocr:
 
 ingestion:
   # Max characters stored per document (downstream classification uses excerpts)
-  max_text_chars: 500000
+  max_text_chars: 2000000
   # Skip files larger than this (bytes); 0 = no limit
   max_file_size_bytes: 0
 
@@ -81,7 +87,11 @@ guardrails:
   # Extensions that must never escalate to Tier 3 (always local-only)
   local_only_extensions:
     - .dwg
+    - .dxf
     - .kmz
+    - .kml
+    - .geojson
+    - .gpx
   # Parent folder name fragments that force local-only (case-insensitive substring)
   local_only_folders: []
   # Only escalate when local combined score is below this threshold

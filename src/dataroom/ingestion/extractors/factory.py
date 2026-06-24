@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from dataroom.ingestion.extractors.base import BaseExtractor
-from dataroom.ingestion.extractors.email import EmlExtractor, MsgExtractor
 from dataroom.ingestion.extractors.dwg import DwgExtractor
+from dataroom.ingestion.extractors.dxf import DxfExtractor
+from dataroom.ingestion.extractors.email import EmlExtractor, MsgExtractor
+from dataroom.ingestion.extractors.geojson import GeoJsonExtractor
+from dataroom.ingestion.extractors.gpx import GpxExtractor
 from dataroom.ingestion.extractors.image import ImageExtractor
+from dataroom.ingestion.extractors.kml import KmlExtractor
 from dataroom.ingestion.extractors.kmz import KmzExtractor
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig, LegacyOfficeConverter
 from dataroom.ingestion.extractors.office import (
@@ -40,6 +44,10 @@ def build_extractors(
         TextExtractor(**common),
         EmlExtractor(**common),
         MsgExtractor(**common),
+        KmlExtractor(**common),
         KmzExtractor(**common),
+        GeoJsonExtractor(**common),
+        GpxExtractor(**common),
+        DxfExtractor(**common),
         DwgExtractor(**common),
     ]
