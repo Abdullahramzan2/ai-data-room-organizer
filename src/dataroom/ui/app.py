@@ -24,6 +24,12 @@ from dataroom.ui.helpers import (
     taxonomy_folder_names,
 )
 from dataroom.ui.doctor_display import display_doctor_report
+from dataroom.ui.outputs_display import (
+    display_admin_mirror_panel,
+    display_audit_log_hint,
+    display_manifest_preview,
+    display_processing_log_panel,
+)
 from dataroom.ui.summary_display import display_run_summary
 from dataroom.ui.progress_display import LiveProgressPanel, render_duplicate_pairs_table, render_file_results_table
 from dataroom.ui.widgets import folder_path_field
@@ -64,11 +70,18 @@ def _sidebar() -> str:
 
 def _page_run() -> None:
     st.header("Run pipeline")
-    st.caption("Ingest, classify, organize, and export in one step. Original files are never modified.")
+    st.caption(
+        "Ingest, classify, organize, and export in one step. Original files are never modified. "
+        "Exports include manifest, HTML index, review queue, duplicate report, classification log, "
+        "processing log, and admin mirror in `00_Admin_and_Index/`."
+    )
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        rename = st.checkbox("Rename files", value=False)
+        rename = st.checkbox("Rename files", value=False, help=(
+            "Standardized names: YYYY-MM-DD__Category__Source__Desc__OriginalName.ext "
+            "(segments omitted when unknown)."
+        ))
     with col2:
         no_ocr = st.checkbox("Disable OCR", value=False)
     with col3:
@@ -123,7 +136,9 @@ def _save_review_queue(queue_path: Path, edited) -> bool:
 
 def _page_review() -> None:
     st.header("Review queue")
-    st.caption("Set corrected_folder for flagged files, save, then rerun without re-OCR.")
+    st.caption(
+        "Set corrected_folder for flagged files (including duplicate pairs), save, then rerun without re-OCR."
+    )
 
     output_dir = Path(st.session_state.output_dir)
     config_path = _config_path()
@@ -140,6 +155,18 @@ def _page_review() -> None:
     if not rows:
         st.success("Review queue is empty — no files need review.")
         return
+
+    duplicate_count = sum(
+        1 for row in rows if "duplicate" in str(row.get("review_reason", "")).lower()
+    )
+    if duplicate_count:
+        st.info(f"{duplicate_count} file(s) flagged for duplicate review.")
+
+    rename_on_rerun = st.checkbox(
+        "Rename files on rerun",
+        value=False,
+        help="Apply standardized rename when re-organizing copies.",
+    )
 
     df = pd.DataFrame(rows, columns=REVIEW_COLUMNS)
     folder_options = [""] + folders
@@ -182,6 +209,7 @@ def _page_review() -> None:
                 result = run_rerun_subprocess(
                     output_dir,
                     config_path=config_path,
+                    rename=rename_on_rerun,
                     on_progress=lambda snap: panel.update(snap),
                 )
             except PipelineSubprocessError as exc:
@@ -238,6 +266,10 @@ def _page_doctor() -> None:
 
 def _page_outputs() -> None:
     st.header("Outputs")
+    st.caption(
+        "Run summary, manifest preview, processing log, duplicate pairs, and artifact paths. "
+        "Open `index.html` in a browser for searchable browsing with snippet and duplicate filters."
+    )
     output_dir = Path(st.session_state.output_dir)
     config = load_app_config(_config_path())
 
@@ -251,6 +283,9 @@ def _page_outputs() -> None:
         st.info("No pipeline outputs yet. Run the pipeline first.")
         return
 
+    if summary:
+        display_run_summary(summary, title="Run summary", expanded=True)
+
     if progress and progress.get("files"):
         st.subheader("File results")
         render_file_results_table(progress)
@@ -262,6 +297,11 @@ def _page_outputs() -> None:
         st.subheader(f"Duplicate pairs ({len(dup_rows)})")
         render_duplicate_pairs_table(dup_rows)
 
+    display_manifest_preview(output_dir, config=config)
+    if summary:
+        display_processing_log_panel(output_dir, config=config, summary=summary)
+        display_admin_mirror_panel(summary)
+
     artifacts = list_output_artifacts(output_dir, config=config)
     if artifacts:
         st.subheader("Output artifacts")
@@ -269,12 +309,15 @@ def _page_outputs() -> None:
             pd.DataFrame(artifacts),
             hide_index=True,
             width="stretch",
-            height=min(360, 38 + len(artifacts) * 35),
+            height=min(420, 38 + len(artifacts) * 35),
         )
 
     index_path = output_dir / config.get("output", {}).get("index_html_file", "index.html")
     if index_path.is_file():
-        st.caption(f"HTML index: `{index_path}` — open in a browser for searchable browsing.")
+        st.markdown(f"**HTML index:** `{index_path}`")
+        st.caption("Open in your browser — includes search, snippet column, and duplicate/review filters.")
+
+    display_audit_log_hint(output_dir, config=config)
 
 
 def main() -> None:

@@ -130,7 +130,7 @@ Use a folder with intentional duplicate pairs (same file copied, or identical co
 |-----|-------|
 | **Taxonomy** | Categories 00–19 listed with keyword counts |
 | **Doctor** | Run doctor → formatted report; pass/fail banner |
-| **Outputs** | Run summary + artifact table when output dir has `run_summary.json` |
+| **Outputs** | Run summary (expanded), manifest preview columns, processing log metrics, admin mirror file list, artifact table including `classification_log.csv` and `processing_log.json`, HTML index path |
 
 ---
 

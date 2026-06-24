@@ -94,6 +94,7 @@ def list_output_artifacts(
             "processing_log",
             output_cfg.get("processing_log_file", "processing_log.json"),
         ),
+        ("audit_log.jsonl", "audit_log", "audit_log.jsonl"),
         ("run_summary.json", None, "run_summary.json"),
         ("run_progress.json", None, output_cfg.get("progress_file", "run_progress.json")),
     ]
@@ -103,6 +104,8 @@ def list_output_artifacts(
     for label, summary_key, default_name in artifact_defs:
         if summary and summary_key and summary.get(summary_key):
             path = Path(str(summary[summary_key]))
+        elif label == "audit_log.jsonl":
+            path = output_dir / "audit_log.jsonl"
         else:
             path = output_dir / str(default_name)
         artifacts.append(

@@ -129,11 +129,11 @@ If many files land in review queue or wrong folders:
 
 | Tab | Purpose |
 |-----|---------|
-| **Run** | Execute full pipeline; live per-file progress while running; summary when done |
-| **Review** | Edit `corrected_folder`, save, rerun |
+| **Run** | Execute full pipeline; live per-file progress; run summary with all export paths |
+| **Review** | Edit `corrected_folder` (including duplicate-flagged rows), optional rename on rerun, save, rerun |
 | **Taxonomy** | View category IDs, folders, keyword counts |
 | **Doctor** | Environment check (Python, Tesseract, embedding model, Ollama) |
-| **Outputs** | Run summary + list of generated artifacts |
+| **Outputs** | Run summary, manifest preview (snippet/duplicate columns), processing log, admin mirror list, artifact table, HTML index path |
 
 Config path is shown read-only in the sidebar (`config/default.yaml`).
 
