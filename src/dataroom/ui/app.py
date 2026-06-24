@@ -200,12 +200,9 @@ def _page_run() -> None:
         and not st.session_state.pipeline_pending
     ):
         progress = load_pipeline_progress(output_path, config)
-        summary = load_run_summary(output_path)
         if progress:
             update_run_status(progress, force=True)
             panel.update(progress, force=True)
-        if summary:
-            display_run_summary(summary, expanded=False)
 
 
 def _save_review_queue(queue_path: Path, edited) -> bool:

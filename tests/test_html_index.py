@@ -58,6 +58,7 @@ def test_build_index_entries_includes_enrichment_fields(tmp_path: Path):
         duplicate_status="exact_duplicate",
         duplicate_partner_path="C:/source/copy.pdf",
         needs_review="true",
+        needs_review_reason="Duplicate: exact duplicate of copy.pdf",
     )
     entries = build_index_entries([row], link_mode="original", output_dir=output_dir)
     entry = entries[0]
@@ -66,6 +67,7 @@ def test_build_index_entries_includes_enrichment_fields(tmp_path: Path):
     assert entry["duplicate_status"] == "exact_duplicate"
     assert entry["duplicate_partner_path"] == "C:/source/copy.pdf"
     assert entry["needs_review"] is True
+    assert entry["review_reason"] == "Duplicate: exact duplicate of copy.pdf"
 
 
 def test_write_html_index(tmp_path: Path):
@@ -78,6 +80,7 @@ def test_write_html_index(tmp_path: Path):
             duplicate_status="near_duplicate",
             duplicate_partner_path="C:/source/report_old.pdf",
             needs_review="true",
+            needs_review_reason="Low confidence (0.42): weak match",
         )
     ]
     index_path = output_dir / "index.html"
@@ -88,7 +91,9 @@ def test_write_html_index(tmp_path: Path):
     assert "report.pdf" in content
     assert "category_folder" in content
     assert "text_snippet" in content
-    assert "duplicate_status" in content
+    assert "review_reason" in content
+    assert "<th>Reviews</th>" in content
+    assert "Low confidence (0.42): weak match" in content
     assert 'id="review"' in content
     assert 'id="duplicate"' in content
     assert "BRAC cleanup summary" in content

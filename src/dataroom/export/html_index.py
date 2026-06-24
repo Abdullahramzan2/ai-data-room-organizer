@@ -64,6 +64,7 @@ def build_index_entries(
         file_name = row.get("file_name", "")
         extension = Path(file_name).suffix.lower()
         duplicate_status = row.get("duplicate_status", "none") or "none"
+        review_reason = row.get("needs_review_reason") or row.get("review_reason") or ""
         entries.append(
             {
                 "file_name": file_name,
@@ -79,6 +80,7 @@ def build_index_entries(
                 "duplicate_status": duplicate_status,
                 "duplicate_partner_path": row.get("duplicate_partner_path", ""),
                 "needs_review": row.get("needs_review", "false") == "true",
+                "review_reason": review_reason,
                 "original_path": row.get("original_path", ""),
                 "output_path": row.get("output_path", ""),
             }
@@ -112,7 +114,7 @@ def _render_html(entries: list[dict[str, Any]], *, title: str, link_mode: str) -
     a {{ color: #1d4ed8; text-decoration: none; }}
     a:hover {{ text-decoration: underline; }}
     .snippet {{ color: #4b5563; font-size: 12px; max-width: 280px; }}
-    .dup {{ color: #7c3aed; font-size: 12px; }}
+    .review-msg {{ color: #b45309; font-size: 12px; }}
   </style>
 </head>
 <body>
@@ -174,7 +176,7 @@ def _render_html(entries: list[dict[str, Any]], *, title: str, link_mode: str) -
         <th data-key="modified_at">Modified</th>
         <th>Reason</th>
         <th>Snippet</th>
-        <th>Duplicate</th>
+        <th>Reviews</th>
       </tr>
     </thead>
     <tbody id="rows"></tbody>
@@ -240,6 +242,7 @@ def _render_html(entries: list[dict[str, Any]], *, title: str, link_mode: str) -
         entry.category_folder,
         entry.classification_reason,
         entry.text_snippet,
+        entry.review_reason,
         entry.document_type,
         entry.original_path,
         entry.output_path,
@@ -286,13 +289,12 @@ def _render_html(entries: list[dict[str, Any]], *, title: str, link_mode: str) -
         snippetCell.textContent = entry.text_snippet || "";
         snippetCell.title = entry.text_snippet || "";
         tr.appendChild(snippetCell);
-        const dupCell = document.createElement("td");
-        dupCell.className = "dup";
-        if (entry.duplicate_status && entry.duplicate_status !== "none") {{
-          dupCell.textContent = entry.duplicate_status.replace(/_/g, " ");
-          dupCell.title = entry.duplicate_partner_path || "";
+        const reviewCell = document.createElement("td");
+        reviewCell.className = "review-msg";
+        if (entry.needs_review && entry.review_reason) {{
+          reviewCell.textContent = entry.review_reason;
         }}
-        tr.appendChild(dupCell);
+        tr.appendChild(reviewCell);
         tbody.appendChild(tr);
       }}
       document.getElementById("count").textContent = `Showing ${{filtered.length}} of ${{entries.length}} files`;
