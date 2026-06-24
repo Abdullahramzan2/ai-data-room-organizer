@@ -69,6 +69,26 @@ def _sidebar() -> str:
     )
 
 
+def _render_saved_run_results(output_path: Path, config: dict) -> None:
+    """Restore file table, duplicates, and summary from the output folder (survives tab navigation)."""
+    progress = load_pipeline_progress(output_path, config)
+    summary = load_run_summary(output_path)
+    if not progress and not summary:
+        return
+
+    if progress:
+        if progress.get("status") == "complete":
+            st.success("Pipeline finished.")
+        elif progress.get("status") == "failed":
+            st.error(progress.get("error") or "Pipeline failed.")
+
+        panel = LiveProgressPanel()
+        panel.update(progress, force=True)
+
+    if summary:
+        display_run_summary(summary, expanded=False)
+
+
 def _page_run() -> None:
     st.header("Run pipeline")
     st.caption(
@@ -88,41 +108,40 @@ def _page_run() -> None:
     with col3:
         no_recursive = st.checkbox("Non-recursive scan", value=False)
 
+    output_path = Path(st.session_state.output_dir)
+    config_path = _config_path()
+    config = load_app_config(config_path)
+
     if st.button("Run pipeline", type="primary"):
         input_path = Path(st.session_state.input_dir)
-        output_path = Path(st.session_state.output_dir)
-        config_path = _config_path()
         if not input_path.is_dir():
             st.error(f"Input folder not found: {input_path}")
-            return
+        else:
+            panel = LiveProgressPanel()
+            panel.update(None, force=True)
 
-        panel = LiveProgressPanel()
-        panel.update(None, force=True)
+            try:
+                from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_pipeline_subprocess
 
-        try:
-            from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_pipeline_subprocess
+                run_pipeline_subprocess(
+                    input_path,
+                    output_path,
+                    config_path=config_path,
+                    rename=rename,
+                    no_ocr=no_ocr,
+                    no_recursive=no_recursive,
+                    on_progress=lambda snap: panel.update(snap),
+                )
+                st.session_state.pop("run_page_error", None)
+            except PipelineSubprocessError as exc:
+                st.session_state["run_page_error"] = str(exc)
+            except Exception as exc:
+                st.session_state["run_page_error"] = f"Pipeline failed: {exc}"
 
-            result = run_pipeline_subprocess(
-                input_path,
-                output_path,
-                config_path=config_path,
-                rename=rename,
-                no_ocr=no_ocr,
-                no_recursive=no_recursive,
-                on_progress=lambda snap: panel.update(snap),
-            )
-        except PipelineSubprocessError as exc:
-            st.error(str(exc))
-            return
-        except Exception as exc:
-            st.error(f"Pipeline failed: {exc}")
-            return
+    if st.session_state.get("run_page_error"):
+        st.error(st.session_state["run_page_error"])
 
-        final_progress = load_pipeline_progress(output_path, load_app_config(config_path))
-        if final_progress:
-            panel.update(final_progress, force=True)
-
-        display_run_summary(result.summary, expanded=False)
+    _render_saved_run_results(output_path, config)
 
 
 def _save_review_queue(queue_path: Path, edited) -> bool:

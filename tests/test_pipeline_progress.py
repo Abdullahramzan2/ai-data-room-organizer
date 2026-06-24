@@ -6,10 +6,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from dataroom.pipeline.progress import RunProgressTracker, load_run_progress
-from dataroom.pipeline import run_pipeline
 
 
 def test_run_pipeline_writes_progress(tmp_path: Path):
+    from dataroom.pipeline import run_pipeline
+
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     (input_dir / "PSA_agreement.txt").write_text(
@@ -51,7 +52,30 @@ def test_progress_tracker_atomic_flush(tmp_path: Path):
     assert loaded["files"][0]["category_folder"] == "01_Project_Overview"
 
 
+def test_progress_flush_retries_on_lock(tmp_path: Path, monkeypatch):
+    tracker = RunProgressTracker.start(tmp_path / "out", input_dir=tmp_path / "in")
+    tracker.register_files([tmp_path / "in" / "a.txt"])
+    original_open = Path.open
+    calls = {"count": 0}
+
+    def flaky_open(self, *args, **kwargs):
+        if self == tracker.path and kwargs.get("mode", args[0] if args else "") in {"w", "w+"}:
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise PermissionError(13, "Permission denied")
+        return original_open(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", flaky_open)
+    tracker.flush(force=True)
+
+    assert calls["count"] == 2
+    loaded = load_run_progress(tracker.path)
+    assert loaded is not None
+
+
 def test_run_pipeline_progress_on_failure(tmp_path: Path):
+    from dataroom.pipeline import run_pipeline
+
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     output_dir = tmp_path / "out"

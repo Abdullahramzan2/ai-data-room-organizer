@@ -146,7 +146,7 @@ def run_pipeline_subprocess(
     no_ocr: bool = False,
     no_recursive: bool = False,
     on_progress: ProgressCallback | None = None,
-    poll_interval: float = 0.5,
+    poll_interval: float = 0.75,
 ) -> SubprocessResult:
     """Run ``dataroom run`` in a child process and return run_summary.json."""
     cmd = _build_run_cmd(
@@ -189,7 +189,7 @@ def run_rerun_subprocess(
     config_path: Path | None = None,
     rename: bool = False,
     on_progress: ProgressCallback | None = None,
-    poll_interval: float = 0.5,
+    poll_interval: float = 0.75,
 ) -> SubprocessResult:
     """Run ``dataroom rerun`` in a child process and return run_summary.json."""
     cmd = _build_rerun_cmd(output_dir, config_path=config_path, rename=rename)
