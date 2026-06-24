@@ -31,7 +31,7 @@ def test_load_run_summary(tmp_path: Path):
 def test_list_output_artifacts(tmp_path: Path):
     output_dir = tmp_path / "out"
     output_dir.mkdir()
-    manifest = output_dir / "manifest.csv"
+    manifest = output_dir / "manifest.xlsx"
     manifest.write_text("x", encoding="utf-8")
     (output_dir / "run_summary.json").write_text(
         json.dumps({"manifest": str(manifest), "processed": 1}),
@@ -39,12 +39,12 @@ def test_list_output_artifacts(tmp_path: Path):
     )
 
     artifacts = list_output_artifacts(output_dir)
-    manifest_row = next(a for a in artifacts if a["artifact"] == "manifest.csv")
+    manifest_row = next(a for a in artifacts if a["artifact"] == "manifest.xlsx")
     assert manifest_row["exists"] == "yes"
     assert manifest_row["path"] == str(manifest)
 
 
 def test_review_queue_path(tmp_path: Path):
     path = review_queue_path(tmp_path)
-    assert path.name == "review_queue.csv"
+    assert path.name == "review_queue.xlsx"
     assert path.parent == tmp_path

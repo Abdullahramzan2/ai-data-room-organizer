@@ -11,7 +11,7 @@ from dataroom.config import load_app_config, load_taxonomy, resolve_project_root
 from dataroom.export.review_queue import (
     REVIEW_COLUMNS,
     ReviewQueueWriteError,
-    read_review_queue_csv,
+    read_review_queue,
     write_review_queue_rows,
 )
 from dataroom.ui.helpers import (
@@ -171,7 +171,7 @@ def _page_review() -> None:
         st.info(f"No review queue at {queue_path}. Run the pipeline first.")
         return
 
-    rows = read_review_queue_csv(queue_path)
+    rows = read_review_queue(queue_path)
     if not rows:
         st.success("Review queue is empty — no files need review.")
         return

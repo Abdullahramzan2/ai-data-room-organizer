@@ -1,11 +1,11 @@
-"""Build and write duplicate_report.csv."""
+"""Build and write duplicate_report.xlsx."""
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 
 from dataroom.duplicates.models import DuplicatePair
+from dataroom.export.xlsx_io import write_table_xlsx
 
 DUPLICATE_REPORT_COLUMNS = [
     "group_id",
@@ -35,10 +35,9 @@ def pairs_to_rows(pairs: list[DuplicatePair]) -> list[dict[str, str]]:
     ]
 
 
+def write_duplicate_report(path: Path, pairs: list[DuplicatePair]) -> None:
+    write_table_xlsx(path, DUPLICATE_REPORT_COLUMNS, pairs_to_rows(pairs), sheet_title="Duplicates")
+
+
 def write_duplicate_report_csv(path: Path, pairs: list[DuplicatePair]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    rows = pairs_to_rows(pairs)
-    with path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=DUPLICATE_REPORT_COLUMNS)
-        writer.writeheader()
-        writer.writerows(rows)
+    write_duplicate_report(path, pairs)

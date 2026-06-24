@@ -21,17 +21,16 @@ def test_run_pipeline(tmp_path: Path):
     admin = output_dir / ADMIN
     assert summary["processed"] == 1
     assert summary["organized"] == 1
-    assert (admin / "manifest.csv").is_file()
     assert (admin / "manifest.xlsx").is_file()
     assert (admin / "index.html").is_file()
-    assert (admin / "review_queue.csv").is_file()
-    assert (admin / "errors_report.csv").is_file()
-    assert (admin / "duplicate_report.csv").is_file()
-    assert (admin / "classification_log.csv").is_file()
+    assert (admin / "review_queue.xlsx").is_file()
+    assert (admin / "errors_report.xlsx").is_file()
+    assert (admin / "duplicate_report.xlsx").is_file()
+    assert (admin / "classification_log.xlsx").is_file()
     assert (admin / "processing_log.json").is_file()
-    assert (admin / "source_authentication_matrix.csv").is_file()
+    assert (admin / "source_authentication_matrix.xlsx").is_file()
     assert (admin / "run_summary.json").is_file()
-    assert not (output_dir / "manifest.csv").is_file()
+    assert not (output_dir / "manifest.xlsx").is_file()
     assert (output_dir / "run_summary.json").is_file()
     assert (output_dir / "ingestion_cache.json").is_file()
     assert (output_dir / "classification_cache.json").is_file()

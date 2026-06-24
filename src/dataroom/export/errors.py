@@ -1,10 +1,10 @@
-"""Write errors_report.csv for skipped, failed, and organize errors."""
+"""Write errors_report.xlsx for skipped, failed, and organize errors."""
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 
+from dataroom.export.xlsx_io import write_table_xlsx
 from dataroom.organizer.models import OrganizeResult
 
 ERROR_REPORT_COLUMNS = ["file_name", "original_path", "stage", "reason"]
@@ -52,9 +52,9 @@ def build_organize_error_rows(results: list[OrganizeResult]) -> list[dict[str, s
     return rows
 
 
+def write_errors_report(path: Path, rows: list[dict[str, str]]) -> None:
+    write_table_xlsx(path, ERROR_REPORT_COLUMNS, rows, sheet_title="Errors")
+
+
 def write_errors_report_csv(path: Path, rows: list[dict[str, str]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=ERROR_REPORT_COLUMNS)
-        writer.writeheader()
-        writer.writerows(rows)
+    write_errors_report(path, rows)

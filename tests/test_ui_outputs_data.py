@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import csv
 import json
 from pathlib import Path
 
 from dataroom.export.manifest import MANIFEST_COLUMNS
+from dataroom.export.manifest_xlsx import write_manifest_xlsx
 from dataroom.ui.helpers import list_output_artifacts
 from dataroom.ui.outputs_data import (
     MANIFEST_PREVIEW_COLUMNS,
@@ -30,14 +30,11 @@ def _write_manifest(path: Path) -> None:
             "output_path": "C:/out/05/report.pdf",
         }
     )
-    with path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=MANIFEST_COLUMNS)
-        writer.writeheader()
-        writer.writerow(row)
+    write_manifest_xlsx(path, [row])
 
 
 def test_load_manifest_preview_rows(tmp_path: Path):
-    manifest = tmp_path / "manifest.csv"
+    manifest = tmp_path / "manifest.xlsx"
     _write_manifest(manifest)
     (tmp_path / "run_summary.json").write_text(
         json.dumps({"manifest": str(manifest)}),
@@ -70,7 +67,7 @@ def test_load_processing_log(tmp_path: Path):
 def test_list_admin_mirror_files(tmp_path: Path):
     admin = tmp_path / "00_Admin_and_Index"
     admin.mkdir()
-    (admin / "manifest.csv").write_text("x", encoding="utf-8")
+    (admin / "manifest.xlsx").write_text("x", encoding="utf-8")
     (admin / "index.html").write_text("<html></html>", encoding="utf-8")
     files = list_admin_mirror_files(admin)
     assert len(files) == 2
@@ -80,13 +77,13 @@ def test_list_admin_mirror_files(tmp_path: Path):
 def test_list_output_artifacts_includes_audit_and_logs(tmp_path: Path):
     output_dir = tmp_path / "out"
     output_dir.mkdir()
-    (output_dir / "classification_log.csv").write_text("x", encoding="utf-8")
+    (output_dir / "classification_log.xlsx").write_text("x", encoding="utf-8")
     (output_dir / "processing_log.json").write_text("{}", encoding="utf-8")
     (output_dir / "audit_log.jsonl").write_text("{}", encoding="utf-8")
     (output_dir / "run_summary.json").write_text(
         json.dumps(
             {
-                "classification_log": str(output_dir / "classification_log.csv"),
+                "classification_log": str(output_dir / "classification_log.xlsx"),
                 "processing_log": str(output_dir / "processing_log.json"),
                 "audit_log": str(output_dir / "audit_log.jsonl"),
                 "admin_folder": str(output_dir / "00_Admin_and_Index"),
@@ -97,7 +94,7 @@ def test_list_output_artifacts_includes_audit_and_logs(tmp_path: Path):
     (output_dir / "00_Admin_and_Index").mkdir()
 
     labels = {a["artifact"] for a in list_output_artifacts(output_dir)}
-    assert "classification_log.csv" in labels
+    assert "classification_log.xlsx" in labels
     assert "processing_log.json" in labels
     assert "audit_log.jsonl" in labels
     assert "00_Admin_and_Index/ (mirror)" not in labels

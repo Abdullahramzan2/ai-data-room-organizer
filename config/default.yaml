@@ -128,20 +128,19 @@ paths:
 
 output:
   naming_mode: preserve
-  manifest_file: manifest.csv
-  review_queue_file: review_queue.csv
-  errors_report_file: errors_report.csv
-  manifest_xlsx_file: manifest.xlsx
-  duplicate_report_file: duplicate_report.csv
+  manifest_file: manifest.xlsx
+  review_queue_file: review_queue.xlsx
+  errors_report_file: errors_report.xlsx
+  duplicate_report_file: duplicate_report.xlsx
   index_html_file: index.html
   index_link_mode: original
   persist_ingestion_cache: true
   ingestion_cache_file: ingestion_cache.json
   classification_cache_file: classification_cache.json
-  classification_log_file: classification_log.csv
+  classification_log_file: classification_log.xlsx
   processing_log_file: processing_log.json
   progress_file: run_progress.json
   admin_folder: "00_Admin_and_Index"
-  source_auth_matrix_file: source_authentication_matrix.csv
+  source_auth_matrix_file: source_authentication_matrix.xlsx
   # When false (default), Carl admin deliverables live only under 00_Admin_and_Index.
   keep_admin_artifacts_at_root: false

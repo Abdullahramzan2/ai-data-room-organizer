@@ -6,10 +6,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-import csv
-
 from dataroom.config import load_app_config, resolve_project_root
+from dataroom.duplicates.report import DUPLICATE_REPORT_COLUMNS
 from dataroom.export.admin_outputs import admin_folder_name, resolve_artifact_path
+from dataroom.export.xlsx_io import read_table_xlsx
 from dataroom.pipeline.progress import default_progress_path, load_run_progress
 
 
@@ -34,7 +34,7 @@ def load_pipeline_progress(output_dir: Path, config: dict[str, Any] | None = Non
 
 
 def load_duplicate_report_rows(output_dir: Path, config: dict[str, Any] | None = None) -> list[dict[str, str]]:
-    """Read duplicate_report.csv if present."""
+    """Read duplicate_report.xlsx if present."""
     config = config or load_app_config()
     output_cfg = config.get("output", {}) or {}
     summary = load_run_summary(output_dir)
@@ -42,14 +42,10 @@ def load_duplicate_report_rows(output_dir: Path, config: dict[str, Any] | None =
         output_dir,
         config,
         summary_key="duplicate_report",
-        default_name=str(output_cfg.get("duplicate_report_file", "duplicate_report.csv")),
+        default_name=str(output_cfg.get("duplicate_report_file", "duplicate_report.xlsx")),
         summary=summary,
     )
-    if not report_path.is_file():
-        return []
-    with report_path.open(newline="", encoding="utf-8") as fh:
-        reader = csv.DictReader(fh)
-        return [dict(row) for row in reader]
+    return read_table_xlsx(report_path, DUPLICATE_REPORT_COLUMNS)
 
 
 def taxonomy_folder_names(taxonomy: dict[str, Any]) -> list[str]:
@@ -72,25 +68,24 @@ def list_output_artifacts(
     summary = load_run_summary(output_dir)
 
     artifact_defs = [
-        ("manifest.csv", "manifest", output_cfg.get("manifest_file", "manifest.csv")),
-        ("manifest.xlsx", "manifest_xlsx", output_cfg.get("manifest_xlsx_file", "manifest.xlsx")),
-        ("review_queue.csv", "review_queue", output_cfg.get("review_queue_file", "review_queue.csv")),
+        ("manifest.xlsx", "manifest", output_cfg.get("manifest_file", "manifest.xlsx")),
+        ("review_queue.xlsx", "review_queue", output_cfg.get("review_queue_file", "review_queue.xlsx")),
         (
-            "duplicate_report.csv",
+            "duplicate_report.xlsx",
             "duplicate_report",
-            output_cfg.get("duplicate_report_file", "duplicate_report.csv"),
+            output_cfg.get("duplicate_report_file", "duplicate_report.xlsx"),
         ),
         ("index.html", "index_html", output_cfg.get("index_html_file", "index.html")),
-        ("errors_report.csv", "errors_report", output_cfg.get("errors_report_file", "errors_report.csv")),
+        ("errors_report.xlsx", "errors_report", output_cfg.get("errors_report_file", "errors_report.xlsx")),
         (
-            "source_authentication_matrix.csv",
+            "source_authentication_matrix.xlsx",
             "source_auth_matrix",
-            output_cfg.get("source_auth_matrix_file", "source_authentication_matrix.csv"),
+            output_cfg.get("source_auth_matrix_file", "source_authentication_matrix.xlsx"),
         ),
         (
-            "classification_log.csv",
+            "classification_log.xlsx",
             "classification_log",
-            output_cfg.get("classification_log_file", "classification_log.csv"),
+            output_cfg.get("classification_log_file", "classification_log.xlsx"),
         ),
         (
             "processing_log.json",
@@ -117,7 +112,6 @@ def list_output_artifacts(
     for label, summary_key, default_name in artifact_defs:
         if summary_key in {
             "manifest",
-            "manifest_xlsx",
             "review_queue",
             "duplicate_report",
             "index_html",
@@ -170,6 +164,6 @@ def review_queue_path(output_dir: Path, config: dict[str, Any] | None = None) ->
         output_dir,
         config,
         summary_key="review_queue",
-        default_name=str(output_cfg.get("review_queue_file", "review_queue.csv")),
+        default_name=str(output_cfg.get("review_queue_file", "review_queue.xlsx")),
         summary=summary,
     )

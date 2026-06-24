@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import json
 from pathlib import Path
 from unittest.mock import patch
@@ -11,10 +10,13 @@ import pytest
 from click.testing import CliRunner
 
 from dataroom.cli import main
-from dataroom.export.review_queue import REVIEW_COLUMNS
+from dataroom.export.review_queue import REVIEW_COLUMNS, write_review_queue_rows
 from dataroom.pipeline import run_pipeline, run_rerun
 from dataroom.pipeline.cache import load_classification_cache
 from dataroom.pipeline.rerun import RerunError
+
+
+ADMIN = "00_Admin_and_Index"
 
 
 def test_review_queue_includes_corrected_folder_column(tmp_path: Path):
@@ -27,11 +29,16 @@ def test_review_queue_includes_corrected_folder_column(tmp_path: Path):
     output_dir = tmp_path / "out"
     run_pipeline(input_dir, output_dir, no_ocr=True)
 
-    review_path = output_dir / "review_queue.csv"
-    with review_path.open(newline="", encoding="utf-8") as fh:
-        reader = csv.DictReader(fh)
-        assert reader.fieldnames == REVIEW_COLUMNS
-        assert "corrected_folder" in reader.fieldnames
+    from openpyxl import load_workbook
+
+    review_path = output_dir / ADMIN / "review_queue.xlsx"
+    wb = load_workbook(review_path, read_only=True)
+    try:
+        header = [str(c or "") for c in next(wb.active.iter_rows(values_only=True))]
+    finally:
+        wb.close()
+    assert header == REVIEW_COLUMNS
+    assert "corrected_folder" in header
 
 
 def test_run_rerun_applies_review_queue_correction(tmp_path: Path):
@@ -49,12 +56,22 @@ def test_run_rerun_applies_review_queue_correction(tmp_path: Path):
     if original_folder == corrected_folder:
         corrected_folder = "04_Zoning_and_Land_Use"
 
-    review_path = output_dir / "review_queue.csv"
-    review_path.write_text(
-        "file_name,original_path,assigned_folder,confidence,score,review_reason,"
-        "classification_reason,supporting_terms,corrected_folder\n"
-        f"{source.name},{source},{original_folder},low,0.3,low confidence,test,,{corrected_folder}\n",
-        encoding="utf-8",
+    review_path = output_dir / ADMIN / "review_queue.xlsx"
+    write_review_queue_rows(
+        review_path,
+        [
+            {
+                "file_name": source.name,
+                "original_path": str(source),
+                "assigned_folder": original_folder,
+                "confidence": "low",
+                "score": "0.3",
+                "review_reason": "low confidence",
+                "classification_reason": "test",
+                "supporting_terms": "",
+                "corrected_folder": corrected_folder,
+            }
+        ],
     )
 
     summary = run_rerun(output_dir)
@@ -97,7 +114,7 @@ def test_rerun_cli(mock_run_rerun):
         "corrections_applied": 2,
         "organized": 5,
         "output_dir": "C:/out",
-        "review_queue": "C:/out/review_queue.csv",
+        "review_queue": "C:/out/00_Admin_and_Index/review_queue.xlsx",
         "review_queue_count": 1,
         "correction_warnings": [],
     }

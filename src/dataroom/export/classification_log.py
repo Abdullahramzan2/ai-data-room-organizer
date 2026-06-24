@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import json
 import hashlib
 from datetime import datetime, timezone
@@ -37,10 +36,6 @@ def file_content_fingerprint(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
 
 
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
 def build_classification_log_rows(
     manifest_rows: list[dict[str, str]],
     *,
@@ -71,12 +66,14 @@ def build_classification_log_rows(
     return rows
 
 
+def write_classification_log(path: Path, rows: list[dict[str, str]]) -> None:
+    from dataroom.export.xlsx_io import write_table_xlsx
+
+    write_table_xlsx(path, CLASSIFICATION_LOG_COLUMNS, rows, sheet_title="Classification Log")
+
+
 def write_classification_log_csv(path: Path, rows: list[dict[str, str]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=CLASSIFICATION_LOG_COLUMNS)
-        writer.writeheader()
-        writer.writerows(rows)
+    write_classification_log(path, rows)
 
 
 def build_processing_log(
@@ -119,7 +116,6 @@ def build_processing_log(
         "timings": summary.get("timings") or ctx.get("timings") or {},
         "artifacts": {
             "manifest": summary.get("manifest", ""),
-            "manifest_xlsx": summary.get("manifest_xlsx", ""),
             "review_queue": summary.get("review_queue", ""),
             "duplicate_report": summary.get("duplicate_report", ""),
             "errors_report": summary.get("errors_report", ""),

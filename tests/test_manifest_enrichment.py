@@ -3,7 +3,8 @@
 from pathlib import Path
 
 from dataroom.duplicates.models import DuplicatePair
-from dataroom.export import build_manifest_rows, write_manifest_csv
+from dataroom.export import build_manifest_rows, write_manifest_xlsx
+from dataroom.export.xlsx_io import read_table_xlsx
 from dataroom.export.duplicate_index import build_duplicate_lookup, duplicate_fields_for_path
 from dataroom.export.manifest import MANIFEST_COLUMNS
 from dataroom.export.manifest_fields import build_text_snippet, infer_document_type
@@ -146,9 +147,10 @@ def test_manifest_rows_include_enrichment_columns(tmp_path):
     assert "USACE" in row["text_snippet"]
     assert row["notes"] == ""
 
-    manifest_path = tmp_path / "manifest.csv"
-    write_manifest_csv(manifest_path, rows)
-    header = manifest_path.read_text(encoding="utf-8").splitlines()[0]
+    manifest_path = tmp_path / "manifest.xlsx"
+    write_manifest_xlsx(manifest_path, rows)
+    loaded = read_table_xlsx(manifest_path, MANIFEST_COLUMNS)
+    assert loaded[0]["duplicate_status"] == "exact_duplicate"
     for column in (
         "duplicate_status",
         "duplicate_partner_path",
@@ -156,6 +158,5 @@ def test_manifest_rows_include_enrichment_columns(tmp_path):
         "text_snippet",
         "notes",
     ):
-        assert column in header
-    assert header.split(",").index("duplicate_status") < header.split(",").index("extraction_method")
-    assert MANIFEST_COLUMNS == header.split(",")
+        assert column in MANIFEST_COLUMNS
+    assert MANIFEST_COLUMNS.index("duplicate_status") < MANIFEST_COLUMNS.index("extraction_method")

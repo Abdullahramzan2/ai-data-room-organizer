@@ -62,7 +62,7 @@ def display_manifest_preview(
 
     st.subheader("Manifest preview")
     st.caption(
-        "Key acceptance columns — open `manifest.csv` / `manifest.xlsx` or `index.html` for the full index."
+        "Key acceptance columns — open `manifest.xlsx` or `index.html` for the full index."
     )
     st.dataframe(
         pd.DataFrame(rows),
@@ -104,4 +104,4 @@ def display_audit_log_hint(output_dir: Path, *, config: dict[str, Any]) -> None:
     path = audit_log_path(output_dir, config=config)
     if not path.is_file():
         return
-    st.caption(f"Tier 3 API audit trail: `{path}` (guardrails only — separate from classification_log.csv)")
+    st.caption(f"Tier 3 API audit trail: `{path}` (guardrails only — separate from classification_log.xlsx)")

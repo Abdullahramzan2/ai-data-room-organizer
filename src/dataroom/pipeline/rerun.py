@@ -34,7 +34,7 @@ def run_rerun(
     """
     Re-organize and re-export from cached ingestion/classification data.
 
-    Reads corrected_folder values from review_queue.csv and applies them
+    Reads corrected_folder values from review_queue.xlsx and applies them
     without re-ingesting or re-classifying documents.
     """
     config = load_app_config(config_path)
@@ -64,7 +64,7 @@ def run_rerun(
             output_dir,
             config,
             summary_key="review_queue",
-            default_name=str(output_cfg.get("review_queue_file", "review_queue.csv")),
+            default_name=str(output_cfg.get("review_queue_file", "review_queue.xlsx")),
         )
 
         if not ingestion_cache_path.is_file():

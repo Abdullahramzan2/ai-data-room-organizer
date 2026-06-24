@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
+
+from dataroom.export.xlsx_io import write_table_xlsx
 
 SOURCE_AUTH_COLUMNS = [
     "file_name",
@@ -39,9 +40,5 @@ def build_source_authentication_rows(manifest_rows: list[dict[str, str]]) -> lis
 
 
 def write_source_authentication_matrix(path: Path, manifest_rows: list[dict[str, str]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
     rows = build_source_authentication_rows(manifest_rows)
-    with path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=SOURCE_AUTH_COLUMNS)
-        writer.writeheader()
-        writer.writerows(rows)
+    write_table_xlsx(path, SOURCE_AUTH_COLUMNS, rows, sheet_title="Source Auth")

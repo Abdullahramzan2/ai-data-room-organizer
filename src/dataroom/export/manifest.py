@@ -1,8 +1,7 @@
-"""Write manifest.csv for classified documents."""
+"""Build manifest rows for classified documents."""
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 from typing import Any
 
@@ -150,11 +149,3 @@ def build_manifest_rows(
         )
 
     return rows
-
-
-def write_manifest_csv(path: Path, rows: list[dict[str, str]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=MANIFEST_COLUMNS)
-        writer.writeheader()
-        writer.writerows(rows)

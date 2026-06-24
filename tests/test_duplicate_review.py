@@ -4,8 +4,8 @@ from pathlib import Path
 
 from dataroom.duplicates.models import DuplicatePair
 from dataroom.duplicates.review_flags import apply_duplicate_review_flags
-from dataroom.export import build_manifest_rows, write_review_queue_csv
-import csv
+from dataroom.export import build_manifest_rows, write_review_queue
+from dataroom.export.review_queue import read_review_queue
 
 
 def _pair(file_a: Path, file_b: Path, *, duplicate_type: str = "exact") -> DuplicatePair:
@@ -131,11 +131,10 @@ def test_duplicate_flagged_files_appear_in_review_queue(tmp_path: Path):
         tmp_path / "out",
         duplicate_pairs=pairs,
     )
-    review_path = tmp_path / "review_queue.csv"
-    write_review_queue_csv(review_path, rows)
+    review_path = tmp_path / "review_queue.xlsx"
+    write_review_queue(review_path, rows)
 
-    with review_path.open(encoding="utf-8") as fh:
-        review = list(csv.DictReader(fh))
+    review = read_review_queue(review_path)
 
     assert len(review) == 2
     for row in review:

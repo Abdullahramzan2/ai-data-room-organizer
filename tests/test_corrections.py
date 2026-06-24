@@ -2,20 +2,41 @@
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 
 from dataroom.corrections import apply_corrections, load_corrections_from_review_queue
 from dataroom.config import load_taxonomy
+from dataroom.export.review_queue import write_review_queue_rows
 
 
 def test_load_corrections_from_review_queue(tmp_path: Path):
-    review_path = tmp_path / "review_queue.csv"
-    review_path.write_text(
-        "file_name,original_path,assigned_folder,corrected_folder\n"
-        "a.txt,C:/data/a.txt,19_Unclassified,01_Project_Overview\n"
-        "b.txt,C:/data/b.txt,19_Unclassified,\n",
-        encoding="utf-8",
+    review_path = tmp_path / "review_queue.xlsx"
+    write_review_queue_rows(
+        review_path,
+        [
+            {
+                "file_name": "a.txt",
+                "original_path": "C:/data/a.txt",
+                "assigned_folder": "19_Unclassified",
+                "confidence": "low",
+                "score": "0.2",
+                "review_reason": "uncertain",
+                "classification_reason": "weak",
+                "supporting_terms": "",
+                "corrected_folder": "01_Project_Overview",
+            },
+            {
+                "file_name": "b.txt",
+                "original_path": "C:/data/b.txt",
+                "assigned_folder": "19_Unclassified",
+                "confidence": "low",
+                "score": "0.2",
+                "review_reason": "uncertain",
+                "classification_reason": "weak",
+                "supporting_terms": "",
+                "corrected_folder": "",
+            },
+        ],
     )
 
     corrections = load_corrections_from_review_queue(review_path)

@@ -6,7 +6,6 @@ from pathlib import Path
 from dataroom.duplicates import (
     DuplicateConfig,
     detect_duplicates,
-    write_duplicate_report_csv,
 )
 from dataroom.ingestion.hashing import sha256_file
 
@@ -86,16 +85,18 @@ def test_duplicate_detection_disabled(tmp_path: Path):
 
 
 def test_write_duplicate_report_csv(tmp_path: Path):
+    from dataroom.duplicates.report import DUPLICATE_REPORT_COLUMNS, write_duplicate_report
+    from dataroom.export.xlsx_io import read_table_xlsx
+
     a = tmp_path / "a.txt"
     b = tmp_path / "b.txt"
     a.write_bytes(b"same")
     b.write_bytes(b"same")
     pairs = detect_duplicates([_doc(a, "text"), _doc(b, "text")], DuplicateConfig())
-    report_path = tmp_path / "duplicate_report.csv"
-    write_duplicate_report_csv(report_path, pairs)
+    report_path = tmp_path / "duplicate_report.xlsx"
+    write_duplicate_report(report_path, pairs)
 
-    with report_path.open(encoding="utf-8") as fh:
-        rows = list(csv.DictReader(fh))
+    rows = read_table_xlsx(report_path, DUPLICATE_REPORT_COLUMNS)
     assert len(rows) >= 1
     assert rows[0]["duplicate_type"] == "exact"
     assert rows[0]["file_a_hash"] == rows[0]["file_b_hash"]

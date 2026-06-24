@@ -30,10 +30,13 @@ def test_build_source_authentication_rows():
 
 
 def test_write_source_authentication_matrix(tmp_path: Path):
-    path = tmp_path / "00_Admin_and_Index" / "source_authentication_matrix.csv"
+    from dataroom.export.xlsx_io import read_table_xlsx
+
+    path = tmp_path / "00_Admin_and_Index" / "source_authentication_matrix.xlsx"
     write_source_authentication_matrix(
         path,
         [{"file_name": "x.txt", "original_path": "C:/x.txt", "file_hash": "h1"}],
     )
     assert path.is_file()
-    assert "file_hash" in path.read_text(encoding="utf-8")
+    rows = read_table_xlsx(path, SOURCE_AUTH_COLUMNS)
+    assert rows[0]["file_hash"] == "h1"

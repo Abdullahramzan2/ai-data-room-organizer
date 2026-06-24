@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 from typing import Any
+
+from dataroom.export.review_queue import read_review_queue
 
 
 def _normalize_path_key(path: str) -> str:
@@ -16,20 +17,16 @@ def load_corrections_from_review_queue(
     *,
     column: str = "corrected_folder",
 ) -> dict[str, str]:
-    """Read original_path -> taxonomy folder mappings from review_queue.csv."""
+    """Read original_path -> taxonomy folder mappings from review_queue.xlsx."""
     if not path.is_file():
         return {}
 
     corrections: dict[str, str] = {}
-    with path.open(newline="", encoding="utf-8") as fh:
-        reader = csv.DictReader(fh)
-        if not reader.fieldnames or column not in reader.fieldnames:
-            return corrections
-        for row in reader:
-            original = (row.get("original_path") or "").strip()
-            folder = (row.get(column) or "").strip()
-            if original and folder:
-                corrections[_normalize_path_key(original)] = folder
+    for row in read_review_queue(path):
+        original = (row.get("original_path") or "").strip()
+        folder = (row.get(column) or "").strip()
+        if original and folder:
+            corrections[_normalize_path_key(original)] = folder
     return corrections
 
 

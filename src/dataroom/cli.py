@@ -19,9 +19,8 @@ from dataroom.config import load_app_config, load_taxonomy
 from dataroom.export import (
     build_manifest_rows,
     write_html_index,
-    write_manifest_csv,
     write_manifest_xlsx,
-    write_review_queue_csv,
+    write_review_queue,
 )
 from dataroom.organizer import organize_files
 from dataroom.pipeline import run_pipeline, run_rerun
@@ -346,7 +345,7 @@ def rerun_cmd(
     "--output-dir",
     type=click.Path(file_okay=False, path_type=Path),
     required=True,
-    help="Folder where manifest.csv and review_queue.csv are written.",
+    help="Folder where manifest.xlsx and review_queue.xlsx are written.",
 )
 @click.option(
     "--config",
@@ -363,7 +362,7 @@ def export_cmd(
     config_path: Path | None,
     rename: bool,
 ) -> None:
-    """Write manifest.csv and review_queue.csv from ingest + classification JSON."""
+    """Write manifest.xlsx and review_queue.xlsx from ingest + classification JSON."""
     config = load_app_config(config_path)
     output_cfg = config.get("output", {})
     ingestion = json.loads(ingestion_json.read_text(encoding="utf-8"))
@@ -375,23 +374,20 @@ def export_cmd(
         output_dir,
         rename=rename,
     )
-    manifest_path = output_dir / output_cfg.get("manifest_file", "manifest.csv")
-    manifest_xlsx_path = output_dir / output_cfg.get("manifest_xlsx_file", "manifest.xlsx")
+    manifest_path = output_dir / output_cfg.get("manifest_file", "manifest.xlsx")
     index_html_path = output_dir / output_cfg.get("index_html_file", "index.html")
-    review_path = output_dir / output_cfg.get("review_queue_file", "review_queue.csv")
+    review_path = output_dir / output_cfg.get("review_queue_file", "review_queue.xlsx")
 
-    write_manifest_csv(manifest_path, rows)
-    write_manifest_xlsx(manifest_xlsx_path, rows)
+    write_manifest_xlsx(manifest_path, rows)
     write_html_index(
         index_html_path,
         rows,
         link_mode=str(output_cfg.get("index_link_mode", "original")),
         output_dir=output_dir,
     )
-    write_review_queue_csv(review_path, rows)
+    write_review_queue(review_path, rows)
     review_count = sum(1 for r in rows if r.get("needs_review") == "true")
     click.echo(f"Wrote {manifest_path} ({len(rows)} rows)")
-    click.echo(f"Wrote {manifest_xlsx_path}")
     click.echo(f"Wrote {index_html_path}")
     click.echo(f"Wrote {review_path} ({review_count} rows)")
 

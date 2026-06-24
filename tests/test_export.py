@@ -1,7 +1,9 @@
-import csv
 from pathlib import Path
 
-from dataroom.export import build_manifest_rows, write_manifest_csv, write_review_queue_csv
+from dataroom.export import build_manifest_rows, write_manifest_xlsx, write_review_queue
+from dataroom.export.manifest import MANIFEST_COLUMNS
+from dataroom.export.review_queue import read_review_queue
+from dataroom.export.xlsx_io import read_table_xlsx
 
 
 def test_manifest_and_review_queue(tmp_path: Path):
@@ -31,15 +33,13 @@ def test_manifest_and_review_queue(tmp_path: Path):
     ]
 
     rows = build_manifest_rows(ingestion_docs, classification, tmp_path / "out")
-    manifest_path = tmp_path / "manifest.csv"
-    review_path = tmp_path / "review_queue.csv"
-    write_manifest_csv(manifest_path, rows)
-    write_review_queue_csv(review_path, rows)
+    manifest_path = tmp_path / "manifest.xlsx"
+    review_path = tmp_path / "review_queue.xlsx"
+    write_manifest_xlsx(manifest_path, rows)
+    write_review_queue(review_path, rows)
 
-    with manifest_path.open(encoding="utf-8") as fh:
-        manifest = list(csv.DictReader(fh))
-    with review_path.open(encoding="utf-8") as fh:
-        review = list(csv.DictReader(fh))
+    manifest = read_table_xlsx(manifest_path, MANIFEST_COLUMNS)
+    review = read_review_queue(review_path)
 
     assert len(manifest) == 1
     assert manifest[0]["file_name"] == "psa.txt"

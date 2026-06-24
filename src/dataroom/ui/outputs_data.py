@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import csv
 import json
 from pathlib import Path
 from typing import Any
 
 from dataroom.config import load_app_config
 from dataroom.export.admin_outputs import resolve_artifact_path
+from dataroom.export.xlsx_io import read_table_xlsx
 from dataroom.ui.helpers import load_run_summary
 
 MANIFEST_PREVIEW_COLUMNS = [
@@ -23,7 +23,7 @@ MANIFEST_PREVIEW_COLUMNS = [
 ]
 
 
-def manifest_csv_path(output_dir: Path, config: dict[str, Any] | None = None) -> Path:
+def manifest_path(output_dir: Path, config: dict[str, Any] | None = None) -> Path:
     config = config or load_app_config()
     output_cfg = config.get("output", {}) or {}
     summary = load_run_summary(output_dir)
@@ -31,7 +31,7 @@ def manifest_csv_path(output_dir: Path, config: dict[str, Any] | None = None) ->
         output_dir,
         config,
         summary_key="manifest",
-        default_name=str(output_cfg.get("manifest_file", "manifest.csv")),
+        default_name=str(output_cfg.get("manifest_file", "manifest.xlsx")),
         summary=summary,
     )
 
@@ -42,11 +42,12 @@ def load_manifest_rows(
     config: dict[str, Any] | None = None,
     limit: int | None = None,
 ) -> list[dict[str, str]]:
-    path = manifest_csv_path(output_dir, config)
+    path = manifest_path(output_dir, config)
     if not path.is_file():
         return []
-    with path.open(newline="", encoding="utf-8") as fh:
-        rows = list(csv.DictReader(fh))
+    from dataroom.export.manifest import MANIFEST_COLUMNS
+
+    rows = read_table_xlsx(path, MANIFEST_COLUMNS)
     if limit is not None:
         return rows[:limit]
     return rows

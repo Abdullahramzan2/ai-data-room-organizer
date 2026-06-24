@@ -11,11 +11,10 @@ from dataroom.export import (
     build_ingestion_error_rows,
     build_manifest_rows,
     build_organize_error_rows,
-    write_errors_report_csv,
+    write_errors_report,
     write_html_index,
-    write_manifest_csv,
     write_manifest_xlsx,
-    write_review_queue_csv,
+    write_review_queue,
 )
 from dataroom.export.admin_outputs import (
     copy_run_summary_to_admin,
@@ -26,10 +25,10 @@ from dataroom.export.classification_log import (
     build_classification_log_rows,
     build_processing_log,
     utc_now_iso,
-    write_classification_log_csv,
+    write_classification_log,
     write_processing_log,
 )
-from dataroom.duplicates import write_duplicate_report_csv
+from dataroom.duplicates import write_duplicate_report
 from dataroom.export.source_auth_matrix import write_source_authentication_matrix
 from dataroom.organizer.models import OrganizeResult
 from dataroom.pipeline.cache import (
@@ -80,7 +79,6 @@ def export_pipeline_outputs(
     )
     admin_paths = resolve_admin_artifact_paths(output_dir, config)
     manifest_path = admin_paths.manifest
-    manifest_xlsx_path = admin_paths.manifest_xlsx
     review_path = admin_paths.review_queue
     errors_path = admin_paths.errors_report
     duplicate_path = admin_paths.duplicate_report
@@ -91,10 +89,9 @@ def export_pipeline_outputs(
         "classification_cache_file", "classification_cache.json"
     )
 
-    write_manifest_csv(manifest_path, rows=manifest_rows)
-    write_manifest_xlsx(manifest_xlsx_path, manifest_rows)
-    write_review_queue_csv(review_path, manifest_rows)
-    write_duplicate_report_csv(duplicate_path, duplicate_pairs)
+    write_manifest_xlsx(manifest_path, manifest_rows)
+    write_review_queue(review_path, manifest_rows)
+    write_duplicate_report(duplicate_path, duplicate_pairs)
     write_html_index(
         index_html_path,
         manifest_rows,
@@ -105,18 +102,17 @@ def export_pipeline_outputs(
 
     error_rows = build_ingestion_error_rows(skipped_files, failed_files)
     error_rows.extend(build_organize_error_rows(organized))
-    write_errors_report_csv(errors_path, error_rows)
+    write_errors_report(errors_path, error_rows)
 
     log_timestamp = str((run_context or {}).get("started_at") or utc_now_iso())
     classification_log_rows = build_classification_log_rows(
         manifest_rows,
         timestamp=log_timestamp,
     )
-    write_classification_log_csv(classification_log_path, classification_log_rows)
+    write_classification_log(classification_log_path, classification_log_rows)
 
     for admin_file in (
         manifest_path,
-        manifest_xlsx_path,
         review_path,
         duplicate_path,
         errors_path,
@@ -151,7 +147,6 @@ def export_pipeline_outputs(
         "review_queue_count": review_count,
         "api_used_count": api_used_count,
         "manifest": str(manifest_path),
-        "manifest_xlsx": str(manifest_xlsx_path),
         "review_queue": str(review_path),
         "errors_report": str(errors_path),
         "duplicate_report": str(duplicate_path),

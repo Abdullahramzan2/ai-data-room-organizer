@@ -1,6 +1,5 @@
-"""Tests for classification_log.csv and processing_log.json exports."""
+"""Tests for classification_log.xlsx and processing_log.json exports."""
 
-import csv
 import json
 from pathlib import Path
 
@@ -8,9 +7,10 @@ from dataroom.export.classification_log import (
     CLASSIFICATION_LOG_COLUMNS,
     build_classification_log_rows,
     build_processing_log,
-    write_classification_log_csv,
+    write_classification_log,
     write_processing_log,
 )
+from dataroom.export.xlsx_io import read_table_xlsx
 from dataroom.pipeline.outputs import export_pipeline_outputs, finalize_run_exports
 
 
@@ -48,10 +48,9 @@ def test_build_classification_log_rows_matches_manifest():
 
 
 def test_write_classification_log_csv(tmp_path: Path):
-    path = tmp_path / "classification_log.csv"
-    write_classification_log_csv(path, build_classification_log_rows([_manifest_row()]))
-    with path.open(encoding="utf-8") as fh:
-        loaded = list(csv.DictReader(fh))
+    path = tmp_path / "classification_log.xlsx"
+    write_classification_log(path, build_classification_log_rows([_manifest_row()]))
+    loaded = read_table_xlsx(path, CLASSIFICATION_LOG_COLUMNS)
     assert len(loaded) == 1
     assert loaded[0]["file_name"] == "report.pdf"
 
@@ -65,8 +64,8 @@ def test_build_processing_log_includes_counts_and_timings():
         "review_queue_count": 1,
         "duplicate_pair_count": 2,
         "timings": {"total_seconds": 12.5},
-        "manifest": "C:/out/manifest.csv",
-        "classification_log": "C:/out/classification_log.csv",
+        "manifest": "C:/out/manifest.xlsx",
+        "classification_log": "C:/out/classification_log.xlsx",
     }
     payload = build_processing_log(
         summary=summary,
@@ -131,8 +130,7 @@ def test_export_pipeline_writes_classification_log(tmp_path: Path):
 
     log_path = Path(summary["classification_log"])
     assert log_path.is_file()
-    with log_path.open(encoding="utf-8") as fh:
-        rows = list(csv.DictReader(fh))
+    rows = read_table_xlsx(log_path, CLASSIFICATION_LOG_COLUMNS)
     assert len(rows) == 1
     assert rows[0]["file_name"] == "doc.txt"
 
@@ -141,25 +139,29 @@ def test_finalize_run_exports_writes_processing_log_to_admin(tmp_path: Path):
     output_dir = tmp_path / "out"
     admin_dir = output_dir / "00_Admin_and_Index"
     admin_dir.mkdir(parents=True)
-    manifest = admin_dir / "manifest.csv"
-    manifest.write_text("file_name\na.txt\n", encoding="utf-8")
-    classification_log = admin_dir / "classification_log.csv"
-    classification_log.write_text("file_name\na.txt\n", encoding="utf-8")
+    manifest = admin_dir / "manifest.xlsx"
+    manifest.write_bytes(b"PK")
+    classification_log = admin_dir / "classification_log.xlsx"
+    classification_log.write_bytes(b"PK")
     (output_dir / "run_summary.json").write_text("{}", encoding="utf-8")
 
     summary = {
         "output_dir": str(output_dir),
         "processed": 1,
         "manifest": str(manifest),
-        "manifest_xlsx": str(admin_dir / "manifest.xlsx"),
-        "review_queue": str(admin_dir / "review_queue.csv"),
-        "duplicate_report": str(admin_dir / "duplicate_report.csv"),
-        "errors_report": str(admin_dir / "errors_report.csv"),
+        "review_queue": str(admin_dir / "review_queue.xlsx"),
+        "duplicate_report": str(admin_dir / "duplicate_report.xlsx"),
+        "errors_report": str(admin_dir / "errors_report.xlsx"),
         "index_html": str(admin_dir / "index.html"),
         "classification_log": str(classification_log),
-        "source_auth_matrix": str(admin_dir / "source_authentication_matrix.csv"),
+        "source_auth_matrix": str(admin_dir / "source_authentication_matrix.xlsx"),
     }
-    for name in ("manifest.xlsx", "review_queue.csv", "duplicate_report.csv", "errors_report.csv", "index.html"):
+    for name in (
+        "review_queue.xlsx",
+        "duplicate_report.xlsx",
+        "errors_report.xlsx",
+        "index.html",
+    ):
         (admin_dir / name).write_text("x", encoding="utf-8")
 
     config = {

@@ -1,13 +1,11 @@
 """Tests for errors_report and manifest organize columns."""
 
-import csv
 from pathlib import Path
 
 from dataroom.export import (
     build_ingestion_error_rows,
     build_manifest_rows,
     build_organize_error_rows,
-    write_errors_report_csv,
 )
 from dataroom.organizer.models import OrganizeResult
 
@@ -70,6 +68,9 @@ def test_manifest_includes_organize_failure(tmp_path: Path):
 
 
 def test_write_errors_report_csv(tmp_path: Path):
+    from dataroom.export.errors import ERROR_REPORT_COLUMNS, write_errors_report
+    from dataroom.export.xlsx_io import read_table_xlsx
+
     rows = build_organize_error_rows(
         [
             OrganizeResult(
@@ -81,9 +82,8 @@ def test_write_errors_report_csv(tmp_path: Path):
             )
         ]
     )
-    path = tmp_path / "errors_report.csv"
-    write_errors_report_csv(path, rows)
-    with path.open(encoding="utf-8") as fh:
-        data = list(csv.DictReader(fh))
+    path = tmp_path / "errors_report.xlsx"
+    write_errors_report(path, rows)
+    data = read_table_xlsx(path, ERROR_REPORT_COLUMNS)
     assert data[0]["stage"] == "organize_failed"
     assert data[0]["reason"] == "disk full"

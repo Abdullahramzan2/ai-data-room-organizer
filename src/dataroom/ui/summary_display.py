@@ -80,8 +80,7 @@ def _render_summary_body(summary: dict[str, Any]) -> None:
         st.text(f"Admin mirror: {admin_folder}")
 
     artifacts = [
-        ("Manifest (CSV)", summary.get("manifest")),
-        ("Manifest (Excel)", summary.get("manifest_xlsx")),
+        ("Manifest", summary.get("manifest")),
         ("Review queue", summary.get("review_queue")),
         ("HTML index", summary.get("index_html")),
         ("Duplicate report", summary.get("duplicate_report")),

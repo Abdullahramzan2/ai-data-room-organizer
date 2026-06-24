@@ -10,7 +10,6 @@ from typing import Any
 # Carl folder 00 deliverables — written under {output_dir}/{admin_folder}/.
 ADMIN_ARTIFACT_KEYS = (
     "manifest",
-    "manifest_xlsx",
     "review_queue",
     "duplicate_report",
     "errors_report",
@@ -26,7 +25,6 @@ ADMIN_ARTIFACT_KEYS = (
 class AdminArtifactPaths:
     admin_dir: Path
     manifest: Path
-    manifest_xlsx: Path
     review_queue: Path
     duplicate_report: Path
     errors_report: Path
@@ -38,7 +36,6 @@ class AdminArtifactPaths:
     def as_dict(self) -> dict[str, Path]:
         return {
             "manifest": self.manifest,
-            "manifest_xlsx": self.manifest_xlsx,
             "review_queue": self.review_queue,
             "duplicate_report": self.duplicate_report,
             "errors_report": self.errors_report,
@@ -66,16 +63,19 @@ def resolve_admin_artifact_paths(output_dir: Path, config: dict[str, Any]) -> Ad
     admin_dir.mkdir(parents=True, exist_ok=True)
     return AdminArtifactPaths(
         admin_dir=admin_dir,
-        manifest=admin_dir / str(output_cfg.get("manifest_file", "manifest.csv")),
-        manifest_xlsx=admin_dir / str(output_cfg.get("manifest_xlsx_file", "manifest.xlsx")),
-        review_queue=admin_dir / str(output_cfg.get("review_queue_file", "review_queue.csv")),
-        duplicate_report=admin_dir / str(output_cfg.get("duplicate_report_file", "duplicate_report.csv")),
-        errors_report=admin_dir / str(output_cfg.get("errors_report_file", "errors_report.csv")),
+        manifest=admin_dir / str(output_cfg.get("manifest_file", "manifest.xlsx")),
+        review_queue=admin_dir / str(output_cfg.get("review_queue_file", "review_queue.xlsx")),
+        duplicate_report=admin_dir / str(
+            output_cfg.get("duplicate_report_file", "duplicate_report.xlsx")
+        ),
+        errors_report=admin_dir / str(output_cfg.get("errors_report_file", "errors_report.xlsx")),
         index_html=admin_dir / str(output_cfg.get("index_html_file", "index.html")),
-        classification_log=admin_dir / str(output_cfg.get("classification_log_file", "classification_log.csv")),
+        classification_log=admin_dir / str(
+            output_cfg.get("classification_log_file", "classification_log.xlsx")
+        ),
         processing_log=admin_dir / str(output_cfg.get("processing_log_file", "processing_log.json")),
         source_auth_matrix=admin_dir / str(
-            output_cfg.get("source_auth_matrix_file", "source_authentication_matrix.csv")
+            output_cfg.get("source_auth_matrix_file", "source_authentication_matrix.xlsx")
         ),
     )
 
