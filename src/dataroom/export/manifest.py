@@ -104,6 +104,8 @@ def build_manifest_rows(
                 source,
                 str(cls["category_folder"]),
                 rename=rename,
+                ingestion_doc=doc,
+                classification=cls,
             )
             output_path = str(output_dir / cls["category_folder"] / dest_name)
             organize_status = "planned"

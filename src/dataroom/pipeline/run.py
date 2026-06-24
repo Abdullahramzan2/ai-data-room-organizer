@@ -214,6 +214,7 @@ def run_pipeline(
             output_dir,
             taxonomy,
             rename=rename,
+            ingestion_by_path={doc["source_path"]: doc for doc in ingestion_docs},
         )
         timings["organize_seconds"] = round(time.perf_counter() - phase_started, 2)
         phase_started = time.perf_counter()

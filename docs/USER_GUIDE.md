@@ -10,7 +10,7 @@ Operator guide for Carl Quesinberry and team. For installation, see `docs/INSTAL
 2. **Extracts** text (native parsers + OCR when needed)
 3. **Classifies** each file into taxonomy folders `00`–`19`
 4. **Copies** organized copies into an output data room
-5. **Exports** manifest, review queue, duplicates report, HTML index, and audit logs
+5. **Exports** manifest, review queue, duplicates report, HTML index, classification log, processing log, and audit logs
 
 **Original source files are never modified or moved.**
 
@@ -47,7 +47,7 @@ Options:
 
 | Flag / checkbox | Effect |
 |-----------------|--------|
-| `--rename` / Rename files | Apply taxonomy-based naming (default: preserve original names) |
+| `--rename` / Rename files | Apply standardized naming (see **Rename format** below) |
 | `--no-ocr` / Disable OCR | Skip Tesseract (faster; scanned PDFs may have little text) |
 | `--no-recursive` / Non-recursive | Only scan top-level files |
 
@@ -63,9 +63,35 @@ Open the output folder:
 | `review_queue.csv` | Files needing human attention |
 | `duplicate_report.csv` | Exact and near-duplicate pairs |
 | `errors_report.csv` | Skipped or failed files |
-| `audit_log.jsonl` | Tier 3 LLM escalation decisions |
+| `classification_log.csv` | Per-file classification audit trail |
+| `processing_log.json` | Run metadata, counts, and timings |
+| `audit_log.jsonl` | Tier 3 LLM escalation decisions (API/guardrails only) |
 
 Organized copies live in subfolders `00_…` through `19_…` under the output directory.
+
+**Admin mirror:** When `output.mirror_admin_artifacts` is enabled (default), copies of manifest, review queue, duplicate report, errors, index, `run_summary.json`, `classification_log.csv`, and `processing_log.json` are also placed in `00_Admin_and_Index/` inside the output tree. Root copies remain for CLI/UI paths.
+
+---
+
+## Rename format
+
+When **Rename files** is enabled, organized copies use:
+
+`YYYY-MM-DD__CategoryShort__Source__ShortDesc__OriginalFileName.ext`
+
+| Token | Source |
+|-------|--------|
+| Date | Email header date → `YYYY-MM-DD` in document text → file modified date → `unknown-date` |
+| CategoryShort | Taxonomy folder name after the numeric prefix |
+| Source | Email `From`, first detected entity, or capitalized phrase in text (max 30 chars) |
+| ShortDesc | Email subject or first meaningful text line (max 40 chars) |
+| OriginalFileName | Unchanged source filename including extension |
+
+Source and ShortDesc segments are omitted when not detected. Example:
+
+`2024-06-18__Environmental_RCRA_BRAC_FOSET__USACE__Wetland_report__delineation.pdf`
+
+---
 
 ### 4. Correct misclassified files
 
@@ -129,7 +155,7 @@ start output\project_alpha\index.html
 | `organized` | Copy inside the data room output |
 | `relative` | Relative path from output folder |
 
-Use search/filter boxes in the page to find files by name, folder, or confidence.
+Use search/filter boxes in the page to find files by name, folder, confidence, text snippet, or duplicate status. Filters are available for **Review** and **Duplicates**.
 
 ---
 
@@ -140,7 +166,9 @@ When `duplicates.enabled: true` (default):
 - **Exact** — same SHA-256 file hash
 - **Near** — high text similarity (configurable threshold)
 
-Review `duplicate_report.csv` before sharing the data room externally. The tool reports duplicates within the scanned input batch; it does not delete or merge files automatically, and it does not detect duplicates across separate runs or unrelated folders.
+Review `duplicate_report.csv` before sharing the data room externally. When `duplicates.flag_for_review` is enabled (default), files in duplicate pairs are also added to `review_queue.csv` with a duplicate reason appended.
+
+The tool reports duplicates within the scanned input batch; it does not delete or merge files automatically, and it does not detect duplicates across separate runs or unrelated folders.
 
 ---
 

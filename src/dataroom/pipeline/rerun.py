@@ -127,6 +127,7 @@ def run_rerun(
             output_dir,
             taxonomy,
             rename=rename,
+            ingestion_by_path={doc["source_path"]: doc for doc in ingestion_docs},
         )
 
         tracker.set_phase("exporting")

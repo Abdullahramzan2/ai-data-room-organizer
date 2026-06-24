@@ -39,14 +39,17 @@ def organize_files(
     taxonomy: dict[str, Any],
     *,
     rename: bool = False,
+    ingestion_by_path: dict[str, dict[str, Any]] | None = None,
 ) -> list[OrganizeResult]:
     """Copy each classified file into its category folder. Originals are never modified."""
     create_folder_tree(output_dir, taxonomy)
     organized: list[OrganizeResult] = []
+    docs_by_path = ingestion_by_path or {}
 
     for row in classifications:
         source = Path(row["source_path"])
         category_folder = str(row["category_folder"])
+        ingestion_doc = docs_by_path.get(str(source))
 
         if not source.is_file():
             organized.append(
@@ -60,7 +63,13 @@ def organize_files(
             )
             continue
 
-        dest_name = build_dest_name(source, category_folder, rename=rename)
+        dest_name = build_dest_name(
+            source,
+            category_folder,
+            rename=rename,
+            ingestion_doc=ingestion_doc,
+            classification=row,
+        )
         dest_dir = output_dir / category_folder
         dest_dir.mkdir(parents=True, exist_ok=True)
         dest_path = _unique_dest_path(dest_dir, dest_name)

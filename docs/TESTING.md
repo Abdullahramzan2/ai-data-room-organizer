@@ -27,7 +27,8 @@ dataroom run "C:\path\to\sample\folder" --output-dir output\qa_full
 | Exit code | 0 |
 | `run_summary.json` | `processed` > 0, paths set |
 | Taxonomy folders | Copies under `00_…`–`19_…` |
-| Artifacts | `manifest.csv`, `manifest.xlsx`, `index.html`, `review_queue.csv`, `duplicate_report.csv`, `errors_report.csv`, `audit_log.jsonl` |
+| Artifacts | `manifest.csv`, `manifest.xlsx`, `index.html`, `review_queue.csv`, `duplicate_report.csv`, `errors_report.csv`, `classification_log.csv`, `processing_log.json`, `audit_log.jsonl` |
+| Admin mirror | Copies of manifest, review queue, duplicate report, errors, index, logs under `00_Admin_and_Index/` |
 | Caches | `ingestion_cache.json`, `classification_cache.json` |
 | Originals | Source folder unchanged |
 
@@ -58,8 +59,10 @@ Use a dedicated output folder per test for clear counts.
 
 | Check | Expected |
 |-------|----------|
-| Checkbox on | Organized copies use taxonomy-based names (may add `_2`, `_3` if re-run on same output) |
+| Checkbox on | Organized copies use standardized names: `YYYY-MM-DD__CategoryShort__Source__ShortDesc__OriginalName.ext` (source/description omitted when unknown) |
 | Checkbox off | Original filenames preserved |
+| Email input | Date/from/subject taken from email headers when present |
+| Re-run same output | May add `_2`, `_3` suffixes if names collide |
 
 ### Disable OCR
 
@@ -90,6 +93,14 @@ Use a folder with intentional duplicate pairs (same file copied, or identical co
 | Organized output | Duplicates are **reported**, not removed |
 
 **Note:** Duplicates are detected **within a single run’s input batch**, not across unrelated folders or prior runs.
+
+### Duplicate → review queue
+
+| Check | Expected |
+|-------|----------|
+| \duplicates.flag_for_review: true\ | Both files in a duplicate pair appear in eview_queue.csv\ |
+| eview_reason\ | Includes \Duplicate: exact duplicate\ or ear duplicate\ with partner filename |
+| \manifest.csv\ | \duplicate_status\, \duplicate_partner_path\, \	ext_snippet\, \document_type\ populated |
 
 ---
 
@@ -141,7 +152,16 @@ pip install -e ".[ui,dev]"
 pytest -v
 ```
 
-Expected: **140** tests passing.
+Key unit suites for acceptance gaps:
+
+| Module | Covers |
+|--------|--------|
+| `tests/test_manifest_enrichment.py` | Manifest duplicate/snippet columns |
+| `tests/test_duplicate_review.py` | Duplicate pairs flagged for review |
+| `tests/test_classification_log.py` | Classification + processing logs |
+| `tests/test_admin_outputs.py` | Admin mirror to `00_Admin_and_Index` |
+| `tests/test_naming.py` | Standardized rename tokens |
+| `tests/test_html_index.py` | HTML snippet/duplicate/review filters |
 
 ---
 
