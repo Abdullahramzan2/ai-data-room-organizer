@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from dataroom.classification.embeddings import EmbeddingClassifier
 from dataroom.classification.entities import extract_entities
@@ -47,6 +49,7 @@ def load_classification_config(app_config: dict[str, Any]) -> ClassificationConf
         llm_excerpt_chars=int(raw.get("llm_excerpt_chars", 3000)),
         top_candidates=int(raw.get("top_candidates", 3)),
         auto_provider_chain=auto_chain or ["enterprise", "openai", "ollama", "local"],
+        max_workers=max(1, int(raw.get("max_workers", 4))),
     )
 
 
@@ -321,12 +324,27 @@ class ClassificationEngine:
             reasoning_provider="local",
         )
 
-    def classify_batch(self, documents: list[ExtractedDocument]) -> list[ClassificationResult]:
+    def classify_batch(
+        self,
+        documents: list[ExtractedDocument],
+        *,
+        on_classifying: Callable[[int, int, Path], None] | None = None,
+        on_classified: Callable[[int, int, ClassificationResult], None] | None = None,
+    ) -> list[ClassificationResult]:
         if not documents:
             return []
 
-        results: list[ClassificationResult | None] = [None] * len(documents)
+        total = len(documents)
+        results: list[ClassificationResult | None] = [None] * total
         embedding_jobs: list[tuple[int, ExtractedDocument, str, TierResult | None]] = []
+
+        def _emit_classifying(index: int, document: ExtractedDocument) -> None:
+            if on_classifying is not None:
+                on_classifying(index + 1, total, document.metadata.source_path)
+
+        def _emit_classified(index: int, result: ClassificationResult) -> None:
+            if on_classified is not None:
+                on_classified(index + 1, total, result)
 
         for idx, document in enumerate(documents):
             meta = document.metadata
@@ -339,19 +357,25 @@ class ClassificationEngine:
                 self.config,
             )
             if keyword_result and keyword_result.score >= self.config.high_threshold:
+                _emit_classifying(idx, document)
                 confidence = _score_to_confidence(keyword_result.score, self.config)
-                results[idx] = _finalize_result(
+                result = _finalize_result(
                     meta.source_path, keyword_result, confidence, self.categories, text,
                     reasoning_provider="local",
                 )
+                results[idx] = result
+                _emit_classified(idx, result)
                 continue
 
             if keyword_result and keyword_result.score >= self.config.medium_threshold:
+                _emit_classifying(idx, document)
                 confidence = _score_to_confidence(keyword_result.score, self.config)
-                results[idx] = _finalize_result(
+                result = _finalize_result(
                     meta.source_path, keyword_result, confidence, self.categories, text,
                     reasoning_provider="local",
                 )
+                results[idx] = result
+                _emit_classified(idx, result)
                 continue
 
             embedding_jobs.append((idx, document, text, keyword_result))
@@ -362,18 +386,42 @@ class ClassificationEngine:
                 embed_items,
                 top_k=self.config.top_candidates,
             )
+
+            pending_jobs: list[tuple[int, ExtractedDocument, str, TierResult | None, TierResult | None, list[tuple[str, float]]]] = []
             for (idx, document, text, keyword_result), (embedding_result, candidates) in zip(
                 embedding_jobs,
                 embed_outputs,
                 strict=True,
             ):
-                results[idx] = self._finalize_after_embedding(
+                pending_jobs.append((idx, document, text, keyword_result, embedding_result, candidates))
+                _emit_classifying(idx, document)
+
+            def _finalize_job(
+                job: tuple[int, ExtractedDocument, str, TierResult | None, TierResult | None, list[tuple[str, float]]],
+            ) -> tuple[int, ClassificationResult]:
+                idx, document, text, keyword_result, embedding_result, candidates = job
+                result = self._finalize_after_embedding(
                     document,
                     text,
                     keyword_result,
                     embedding_result,
                     candidates,
                 )
+                return idx, result
+
+            workers = max(1, self.config.max_workers)
+            if workers == 1 or len(pending_jobs) == 1:
+                for job in pending_jobs:
+                    idx, result = _finalize_job(job)
+                    results[idx] = result
+                    _emit_classified(idx, result)
+            else:
+                with ThreadPoolExecutor(max_workers=min(workers, len(pending_jobs))) as pool:
+                    futures = [pool.submit(_finalize_job, job) for job in pending_jobs]
+                    for future in as_completed(futures):
+                        idx, result = future.result()
+                        results[idx] = result
+                        _emit_classified(idx, result)
 
         return [result for result in results if result is not None]
 

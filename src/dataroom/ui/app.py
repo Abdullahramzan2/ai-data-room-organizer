@@ -17,11 +17,15 @@ from dataroom.export.review_queue import (
 from dataroom.ui.helpers import (
     default_config_path,
     list_output_artifacts,
+    load_duplicate_report_rows,
+    load_pipeline_progress,
     load_run_summary,
     review_queue_path,
     taxonomy_folder_names,
 )
+from dataroom.ui.doctor_display import display_doctor_report
 from dataroom.ui.summary_display import display_run_summary
+from dataroom.ui.progress_display import LiveProgressPanel, render_duplicate_pairs_table, render_file_results_table
 from dataroom.ui.widgets import folder_path_field
 
 st.set_page_config(
@@ -78,27 +82,33 @@ def _page_run() -> None:
             st.error(f"Input folder not found: {input_path}")
             return
 
-        with st.spinner("Running pipeline in background process…"):
-            try:
-                from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_pipeline_subprocess
+        panel = LiveProgressPanel()
+        panel.update(None, force=True)
 
-                result = run_pipeline_subprocess(
-                    input_path,
-                    output_path,
-                    config_path=config_path,
-                    rename=rename,
-                    no_ocr=no_ocr,
-                    no_recursive=no_recursive,
-                )
-            except PipelineSubprocessError as exc:
-                st.error(str(exc))
-                return
-            except Exception as exc:
-                st.error(f"Pipeline failed: {exc}")
-                return
+        try:
+            from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_pipeline_subprocess
 
-        st.success("Pipeline completed successfully.")
-        display_run_summary(result.summary)
+            result = run_pipeline_subprocess(
+                input_path,
+                output_path,
+                config_path=config_path,
+                rename=rename,
+                no_ocr=no_ocr,
+                no_recursive=no_recursive,
+                on_progress=lambda snap: panel.update(snap),
+            )
+        except PipelineSubprocessError as exc:
+            st.error(str(exc))
+            return
+        except Exception as exc:
+            st.error(f"Pipeline failed: {exc}")
+            return
+
+        final_progress = load_pipeline_progress(output_path, load_app_config(config_path))
+        if final_progress:
+            panel.update(final_progress, force=True)
+
+        display_run_summary(result.summary, expanded=False)
 
 
 def _save_review_queue(queue_path: Path, edited) -> bool:
@@ -164,24 +174,28 @@ def _page_review() -> None:
         if st.button("Rerun with corrections", type="primary"):
             if not _save_review_queue(queue_path, edited):
                 return
-            with st.spinner("Applying corrections in background process…"):
-                try:
-                    from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_rerun_subprocess
+            panel = LiveProgressPanel()
+            panel.update(None, force=True)
+            try:
+                from dataroom.ui.pipeline_runner import PipelineSubprocessError, run_rerun_subprocess
 
-                    result = run_rerun_subprocess(
-                        output_dir,
-                        config_path=config_path,
-                    )
-                except PipelineSubprocessError as exc:
-                    st.error(str(exc))
-                    return
-                except Exception as exc:
-                    st.error(f"Rerun failed: {exc}")
-                    return
+                result = run_rerun_subprocess(
+                    output_dir,
+                    config_path=config_path,
+                    on_progress=lambda snap: panel.update(snap),
+                )
+            except PipelineSubprocessError as exc:
+                st.error(str(exc))
+                return
+            except Exception as exc:
+                st.error(f"Rerun failed: {exc}")
+                return
             for warning in result.summary.get("correction_warnings", []):
                 st.warning(warning)
-            st.success("Rerun completed.")
-            display_run_summary(result.summary, title="Rerun summary")
+            final_progress = load_pipeline_progress(output_dir, config)
+            if final_progress:
+                panel.update(final_progress, force=True)
+            display_run_summary(result.summary, title="Rerun summary", expanded=False)
 
 
 def _page_taxonomy() -> None:
@@ -212,11 +226,10 @@ def _page_doctor() -> None:
 
     if st.button("Run doctor", type="primary"):
         from dataroom.doctor import run_doctor
-        from dataroom.doctor.checks import format_doctor_report
 
         with st.spinner("Checking environment…"):
             report = run_doctor(_config_path())
-        st.code(format_doctor_report(report))
+        display_doctor_report(report)
         if report.has_failures:
             st.error("One or more required checks failed.")
         else:
@@ -232,19 +245,36 @@ def _page_outputs() -> None:
         st.warning(f"Output directory not found: {output_dir}")
         return
 
+    progress = load_pipeline_progress(output_dir, config)
     summary = load_run_summary(output_dir)
-    if summary:
-        display_run_summary(summary)
-    else:
-        st.info("No run_summary.json yet. Run the pipeline first.")
+    if not progress and not summary:
+        st.info("No pipeline outputs yet. Run the pipeline first.")
+        return
+
+    if progress and progress.get("files"):
+        st.subheader("File results")
+        render_file_results_table(progress)
+
+    dup_rows = progress.get("duplicate_pairs") if progress else []
+    if not dup_rows:
+        dup_rows = load_duplicate_report_rows(output_dir, config)
+    if dup_rows:
+        st.subheader(f"Duplicate pairs ({len(dup_rows)})")
+        render_duplicate_pairs_table(dup_rows)
 
     artifacts = list_output_artifacts(output_dir, config=config)
-    st.dataframe(pd.DataFrame(artifacts), hide_index=True, width="stretch")
+    if artifacts:
+        st.subheader("Output artifacts")
+        st.dataframe(
+            pd.DataFrame(artifacts),
+            hide_index=True,
+            width="stretch",
+            height=min(360, 38 + len(artifacts) * 35),
+        )
 
     index_path = output_dir / config.get("output", {}).get("index_html_file", "index.html")
     if index_path.is_file():
-        st.markdown(f"**HTML index:** `{index_path}`")
-        st.caption("Open index.html in a browser for searchable browsing (no server required).")
+        st.caption(f"HTML index: `{index_path}` — open in a browser for searchable browsing.")
 
 
 def main() -> None:

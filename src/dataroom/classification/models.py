@@ -32,6 +32,7 @@ class ClassificationConfig:
     auto_provider_chain: list[str] = field(
         default_factory=lambda: ["enterprise", "openai", "ollama", "local"]
     )
+    max_workers: int = 4
 
 
 @dataclass

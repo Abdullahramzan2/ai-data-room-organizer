@@ -58,6 +58,8 @@ classification:
   embedding_model: all-MiniLM-L6-v2
   llm_excerpt_chars: 3000
   top_candidates: 3
+  # Parallel Tier-3 / post-embedding classification workers (1 = sequential)
+  max_workers: 4
   # Reasoning provider for Tier 3: auto | local | openai | ollama | enterprise
   reasoning_provider: auto
   # Provider priority when reasoning_provider=auto (first available wins)
@@ -125,3 +127,4 @@ output:
   persist_ingestion_cache: true
   ingestion_cache_file: ingestion_cache.json
   classification_cache_file: classification_cache.json
+  progress_file: run_progress.json

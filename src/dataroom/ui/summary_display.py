@@ -8,10 +8,7 @@ from typing import Any
 import streamlit as st
 
 
-def display_run_summary(summary: dict[str, Any], *, title: str = "Run summary") -> None:
-    """Render a readable run summary instead of raw JSON."""
-    st.subheader(title)
-
+def _render_summary_body(summary: dict[str, Any]) -> None:
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Processed", summary.get("processed", 0))
     c2.metric("Organized", summary.get("organized", 0))
@@ -21,7 +18,10 @@ def display_run_summary(summary: dict[str, Any], *, title: str = "Run summary") 
     c5, c6, c7 = st.columns(3)
     c5.metric("API calls", summary.get("api_used_count", 0))
     c6.metric("Skipped", summary.get("skipped_count", 0))
-    c7.metric("Failed", int(summary.get("ingestion_failed_count", 0)) + int(summary.get("organize_failed_count", 0)))
+    c7.metric(
+        "Failed",
+        int(summary.get("ingestion_failed_count", 0)) + int(summary.get("organize_failed_count", 0)),
+    )
 
     if summary.get("rerun"):
         st.info(f"Rerun — {summary.get('corrections_applied', 0)} correction(s) applied.")
@@ -45,11 +45,8 @@ def display_run_summary(summary: dict[str, Any], *, title: str = "Run summary") 
                 shown += 1
 
     st.markdown("**Paths**")
-    path_rows = [
-        ("Input", summary.get("input_dir", "")),
-        ("Output", summary.get("output_dir", "")),
-    ]
-    for label, value in path_rows:
+    for label, key in [("Input", "input_dir"), ("Output", "output_dir")]:
+        value = summary.get(key, "")
         if value:
             st.text(f"{label}: {value}")
 
@@ -72,3 +69,14 @@ def display_run_summary(summary: dict[str, Any], *, title: str = "Run summary") 
     provider = summary.get("reasoning_provider")
     if provider:
         st.caption(f"Reasoning provider: {provider}")
+
+
+def display_run_summary(
+    summary: dict[str, Any],
+    *,
+    title: str = "Run summary",
+    expanded: bool = False,
+) -> None:
+    """Render run summary inside a collapsible expander."""
+    with st.expander(title, expanded=expanded):
+        _render_summary_body(summary)

@@ -42,8 +42,9 @@ dataroom ui
 | Check | Expected |
 |-------|----------|
 | Sidebar | Input/output paths, Browse works |
-| Run pipeline | Completes; **Run summary** metrics (no raw JSON expander) |
-| Errors | Short error message if subprocess fails (no process log panel) |
+| Run pipeline | **Total files** after scan; per-file table updates live; review queue counter grows as files are flagged |
+| Completion | Final run summary metrics |
+| Errors | Short error message if subprocess fails |
 
 **Tip:** Stop the UI (`Ctrl+C`) before `pip install -e` — otherwise Windows may lock `dataroom.exe`.
 
@@ -140,7 +141,7 @@ pip install -e ".[ui,dev]"
 pytest -v
 ```
 
-Expected: **135** tests passing.
+Expected: **140** tests passing.
 
 ---
 

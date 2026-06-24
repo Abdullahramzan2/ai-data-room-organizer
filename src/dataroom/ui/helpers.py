@@ -6,7 +6,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+import csv
+
 from dataroom.config import load_app_config, resolve_project_root
+from dataroom.pipeline.progress import default_progress_path, load_run_progress
 
 
 def default_config_path() -> Path:
@@ -18,6 +21,27 @@ def load_run_summary(output_dir: Path) -> dict[str, Any] | None:
     if not summary_path.is_file():
         return None
     return json.loads(summary_path.read_text(encoding="utf-8"))
+
+
+def progress_path(output_dir: Path, config: dict[str, Any] | None = None) -> Path:
+    config = config or load_app_config()
+    return default_progress_path(output_dir, config)
+
+
+def load_pipeline_progress(output_dir: Path, config: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    return load_run_progress(progress_path(output_dir, config))
+
+
+def load_duplicate_report_rows(output_dir: Path, config: dict[str, Any] | None = None) -> list[dict[str, str]]:
+    """Read duplicate_report.csv if present."""
+    config = config or load_app_config()
+    output_cfg = config.get("output", {}) or {}
+    report_path = output_dir / str(output_cfg.get("duplicate_report_file", "duplicate_report.csv"))
+    if not report_path.is_file():
+        return []
+    with report_path.open(newline="", encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        return [dict(row) for row in reader]
 
 
 def taxonomy_folder_names(taxonomy: dict[str, Any]) -> list[str]:
@@ -61,6 +85,7 @@ def list_output_artifacts(
             output_cfg.get("classification_cache_file", "classification_cache.json"),
         ),
         ("run_summary.json", None, "run_summary.json"),
+        ("run_progress.json", None, output_cfg.get("progress_file", "run_progress.json")),
     ]
 
     artifacts: list[dict[str, str]] = []

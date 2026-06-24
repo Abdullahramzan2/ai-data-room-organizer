@@ -103,7 +103,7 @@ If many files land in review queue or wrong folders:
 
 | Tab | Purpose |
 |-----|---------|
-| **Run** | Execute full pipeline; shows metrics summary when done |
+| **Run** | Execute full pipeline; live per-file progress while running; summary when done |
 | **Review** | Edit `corrected_folder`, save, rerun |
 | **Taxonomy** | View category IDs, folders, keyword counts |
 | **Doctor** | Environment check (Python, Tesseract, embedding model, Ollama) |

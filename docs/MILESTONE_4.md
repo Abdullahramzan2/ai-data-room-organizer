@@ -140,7 +140,7 @@ dataroom ui
 
 | Tab | Function |
 |-----|----------|
-| **Run** | Full pipeline with browse buttons for input/output folders |
+| **Run** | Full pipeline with browse buttons; **live progress** (file count, per-file status, review queue counter) |
 | **Review** | Edit review queue, save, rerun with corrections |
 | **Taxonomy** | Browse loaded categories |
 | **Doctor** | Run environment checks |
@@ -191,4 +191,4 @@ pip install -e ".[ui,dev]"
 pytest -v
 ```
 
-**135** automated tests covering pipeline, duplicates, rerun, doctor, UI helpers, HTML index, review queue I/O, model setup, and exports.
+**140** automated tests covering pipeline, duplicates, rerun, doctor, UI helpers, live progress, HTML index, review queue I/O, model setup, and exports.

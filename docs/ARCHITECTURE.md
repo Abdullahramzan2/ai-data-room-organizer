@@ -466,6 +466,16 @@ After each `dataroom run`, when `output.persist_ingestion_cache` is true:
 
 `dataroom rerun` loads these caches, applies `corrected_folder` from `review_queue.csv`, re-organizes, and re-exports without re-OCR.
 
+### Live progress (`pipeline/progress.py`)
+
+During `dataroom run` and `dataroom rerun`, the pipeline writes atomic snapshots to `run_progress.json` in the output folder:
+
+- Phase (`scanning`, `ingesting`, `classifying`, …)
+- Counters (total, classified, review queue, duplicates)
+- Per-file rows (status, folder, confidence, review flag)
+
+The Streamlit UI subprocess polls this file every ~0.5s so operators see progress without blocking the heavy work in-process.
+
 ### Duplicate detection (`duplicates/`)
 
 - **Exact duplicates** — SHA-256 file hash match within the **same input batch**
@@ -498,7 +508,8 @@ After each `dataroom run`, when `output.persist_ingestion_cache` is true:
 
 Optional extra `[ui]`: Streamlit app with Run, Review, Taxonomy, Doctor, Outputs tabs.
 
-- `pipeline_runner.py` — invokes `dataroom run` / `dataroom rerun` via **subprocess** (isolates heavy ML/OCR from Streamlit process)
+- `pipeline_runner.py` — invokes `dataroom run` / `dataroom rerun` via **subprocess**; polls `run_progress.json` for live updates
+- `progress_display.py` — live metrics and per-file table during runs
 - `summary_display.py` — metrics, timings, and artifact list for Run/Outputs tabs
 - `widgets.py` / `pickers.py` — folder browse via tkinter
 

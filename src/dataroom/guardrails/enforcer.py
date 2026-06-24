@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,7 @@ class GuardrailsEnforcer:
         self.config = config
         self._audit_path = audit_log_path
         self._run_cost_usd = 0.0
+        self._lock = threading.Lock()
 
     @property
     def run_cost_usd(self) -> float:
@@ -79,8 +81,9 @@ class GuardrailsEnforcer:
             return False, "External API disabled in guardrails config"
 
         if is_external and self.config.max_api_cost_per_run_usd > 0:
-            if self._run_cost_usd >= self.config.max_api_cost_per_run_usd:
-                return False, "Max API cost per run exceeded"
+            with self._lock:
+                if self._run_cost_usd >= self.config.max_api_cost_per_run_usd:
+                    return False, "Max API cost per run exceeded"
 
         return True, "Escalation permitted by guardrails"
 
@@ -94,23 +97,24 @@ class GuardrailsEnforcer:
         chars_sent: int = 0,
         local_score: float | None = None,
     ) -> None:
-        if allowed and chars_sent > 0:
-            est = (chars_sent / 1000) * self._COST_PER_1K_CHARS
-            self._run_cost_usd += est
+        with self._lock:
+            if allowed and chars_sent > 0:
+                est = (chars_sent / 1000) * self._COST_PER_1K_CHARS
+                self._run_cost_usd += est
 
-        self._write_audit(
-            {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "event": "external_call_decision",
-                "file_name": file_name,
-                "provider": provider_id,
-                "allowed": allowed,
-                "reason": reason,
-                "chars_sent": chars_sent if allowed else 0,
-                "local_score": local_score,
-                "cumulative_cost_usd": round(self._run_cost_usd, 6),
-            }
-        )
+            self._write_audit(
+                {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "event": "external_call_decision",
+                    "file_name": file_name,
+                    "provider": provider_id,
+                    "allowed": allowed,
+                    "reason": reason,
+                    "chars_sent": chars_sent if allowed else 0,
+                    "local_score": local_score,
+                    "cumulative_cost_usd": round(self._run_cost_usd, 6),
+                }
+            )
 
     def record_blocked(self, file_name: str, provider_id: str, reason: str, local_score: float | None = None) -> None:
         self.record_external_call(
