@@ -144,3 +144,9 @@ output:
   source_auth_matrix_file: source_authentication_matrix.xlsx
   # When false (default), Carl admin deliverables live only under 00_Admin_and_Index.
   keep_admin_artifacts_at_root: false
+
+pipeline:
+  # Parallel ingestion workers (OCR/extract). Increase on multi-core machines.
+  ingestion_workers: 3
+  # Classification workers; embedding model calls are serialized per engine.
+  classification_workers: 2

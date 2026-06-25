@@ -19,7 +19,7 @@ from dataroom.export.classification_log import file_content_fingerprint, utc_now
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
 from dataroom.ingestion.hashing import sha256_file
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
-from dataroom.ingestion.pipeline import run_ingestion
+from dataroom.ingestion.pipeline import run_ingestion_from_files
 from dataroom.ingestion.scanner import scan_folder
 from dataroom.organizer import organize_files
 from dataroom.ocr.tesseract import OcrConfig
@@ -28,6 +28,7 @@ from dataroom.pipeline.cache import (
     write_ingestion_cache,
 )
 from dataroom.pipeline.outputs import export_pipeline_outputs, finalize_run_exports
+from dataroom.pipeline.pipelined import run_pipelined_ingest_and_classify
 from dataroom.pipeline.progress import RunProgressTracker
 
 
@@ -120,42 +121,6 @@ def run_pipeline(
             output_dir=output_dir,
         )
 
-        def on_ingest_progress(index: int, total: int, path: Path) -> None:
-            tracker.file_ingesting(path, index, total)
-
-        def on_ingest_complete(path: Path, outcome: str, error: str) -> None:
-            if outcome == "ingested":
-                tracker.file_ingested(path)
-            elif outcome == "failed":
-                tracker.file_failed(path, error)
-            elif outcome == "skipped":
-                tracker.file_skipped(path)
-
-        tracker.begin_ingestion()
-        ingestion_result = run_ingestion(
-            input_dir,
-            supported_extensions=supported_extensions,
-            recursive=recursive,
-            ocr_config=ocr_config,
-            legacy_office_config=legacy_office_config,
-            max_file_size_bytes=ingest_cfg.get("max_file_size_bytes", 0),
-            max_text_chars=ingest_cfg.get("max_text_chars", 500_000),
-            on_progress=on_ingest_progress,
-            on_file_complete=on_ingest_complete,
-        )
-        tracker.set_skipped_count(len(ingestion_result.skipped_files))
-
-        ingestion_docs = [d.to_dict() for d in ingestion_result.documents]
-        _attach_file_hashes(ingestion_docs)
-        timings["ingestion_seconds"] = round(time.perf_counter() - phase_started, 2)
-        phase_started = time.perf_counter()
-
-        tracker.set_phase("duplicates")
-        duplicate_pairs = detect_duplicates(ingestion_docs, duplicate_config)
-        tracker.set_duplicate_pairs(pairs_to_rows(duplicate_pairs))
-        timings["duplicates_seconds"] = round(time.perf_counter() - phase_started, 2)
-        phase_started = time.perf_counter()
-
         taxonomy = load_taxonomy(config=config)
         engine = ClassificationEngine(
             taxonomy,
@@ -166,26 +131,50 @@ def run_pipeline(
             guardrails=guardrails,
         )
 
-        def on_classifying(_index: int, _total: int, path: Path) -> None:
-            tracker.file_classifying(path)
+        pipeline_cfg = config.get("pipeline", {}) or {}
+        ingestion_workers = int(pipeline_cfg.get("ingestion_workers", 1))
+        classification_workers = int(pipeline_cfg.get("classification_workers", 2))
 
-        def on_classified(_index: int, _total: int, result) -> None:
-            tracker.file_classified(
-                result.source_path,
-                category_folder=result.category_folder,
-                confidence=result.confidence,
-                needs_review=result.needs_review,
-            )
+        def on_ingest_progress(index: int, total: int, path: Path) -> None:
+            tracker.file_ingesting(path, index, total)
 
-        documents = [_document_from_row(row) for row in ingestion_docs]
-        classification_results = [
-            result.to_dict()
-            for result in engine.classify_batch(
-                documents,
-                on_classifying=on_classifying,
-                on_classified=on_classified,
-            )
+        tracker.begin_ingestion()
+        tracker.set_phase("ingesting")
+        ingestion_result, classification_objects = run_pipelined_ingest_and_classify(
+            scanned_files,
+            tracker=tracker,
+            engine=engine,
+            document_from_row=_document_from_row,
+            ocr_config=ocr_config,
+            legacy_office_config=legacy_office_config,
+            max_file_size_bytes=ingest_cfg.get("max_file_size_bytes", 0),
+            max_text_chars=ingest_cfg.get("max_text_chars", 500_000),
+            ingestion_workers=ingestion_workers,
+            classification_workers=classification_workers,
+            on_ingest_progress=on_ingest_progress,
+        )
+        tracker.set_skipped_count(len(ingestion_result.skipped_files))
+
+        doc_by_path = {
+            str(Path(doc.metadata.source_path).resolve()): doc.to_dict()
+            for doc in ingestion_result.documents
+        }
+        ingestion_docs = [
+            doc_by_path[str(path.resolve())]
+            for path in scanned_files
+            if str(path.resolve()) in doc_by_path
         ]
+        _attach_file_hashes(ingestion_docs)
+        timings["ingestion_seconds"] = round(time.perf_counter() - phase_started, 2)
+        phase_started = time.perf_counter()
+
+        tracker.set_phase("duplicates")
+        duplicate_pairs = detect_duplicates(ingestion_docs, duplicate_config)
+        tracker.set_duplicate_pairs(pairs_to_rows(duplicate_pairs))
+        timings["duplicates_seconds"] = round(time.perf_counter() - phase_started, 2)
+        phase_started = time.perf_counter()
+
+        classification_results = [result.to_dict() for result in classification_objects]
         apply_duplicate_review_flags(
             classification_results,
             duplicate_pairs,

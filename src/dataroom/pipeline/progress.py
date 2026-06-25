@@ -139,10 +139,14 @@ def summarize_file_progress(files: list[dict[str, Any]], *, total: int = 0) -> d
         if status == "skipped":
             skipped += 1
     terminal = classified + failed + skipped
+    classifying = sum(1 for row in files if str(row.get("status", "")) == "classifying")
+    ingesting = sum(1 for row in files if str(row.get("status", "")) == "ingesting")
     return {
         "total": effective_total,
         "ingested": ingested,
         "classified": classified,
+        "classifying": classifying,
+        "ingesting": ingesting,
         "failed": failed,
         "skipped": skipped,
         "terminal": terminal,
@@ -242,7 +246,15 @@ class RunProgressTracker:
         self.flush(force=True)
 
     def file_ingesting(self, path: Path, index: int, total: int) -> None:
-        """Track the active file without changing other rows still ingesting."""
+        """Mark the active file as ingesting (other rows keep their current status)."""
+        key = str(path.resolve())
+        row = self.files.get(key)
+        if row is None:
+            row = FileProgressRow(file_name=path.name, original_path=key)
+            self.files[key] = row
+            self._order.append(key)
+        if row.status in {"pending", "ingested"}:
+            row.status = "ingesting"
         self.current_file = path.name
         self.phase = "ingesting"
         self.total_files = max(self.total_files, total)

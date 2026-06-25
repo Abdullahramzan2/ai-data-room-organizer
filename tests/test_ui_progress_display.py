@@ -86,6 +86,20 @@ def test_live_progress_panel_progress_key_tracks_ingestion():
     assert key_a != key_b
 
 
+def test_summarize_file_progress_counts_classifying():
+    from dataroom.pipeline.progress import summarize_file_progress
+
+    files = [
+        {"status": "ingesting"},
+        {"status": "classifying"},
+        {"status": "done", "category_folder": "01_Project_Overview"},
+    ]
+    counts = summarize_file_progress(files, total=3)
+    assert counts["ingesting"] == 1
+    assert counts["classifying"] == 1
+    assert counts["classified"] == 1
+
+
 def test_summarize_file_progress_counts_classified_only_with_folder():
     from dataroom.pipeline.progress import summarize_file_progress
 

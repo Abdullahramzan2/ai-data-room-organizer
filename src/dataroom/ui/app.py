@@ -158,7 +158,6 @@ def _page_run() -> None:
             repaint_run_status()
     else:
         repaint_run_status()
-    panel = get_live_progress_panel(output_path)
 
     if run_clicked and not st.session_state.pipeline_running:
         if not input_path.is_dir():
@@ -166,8 +165,7 @@ def _page_run() -> None:
         else:
             reset_live_progress_panel(output_path)
             get_run_status_slot()
-            panel = get_live_progress_panel(output_path)
-            panel.clear()
+            st.session_state.pop("_live_run_final_snapshot", None)
             st.session_state.pipeline_running = True
             st.session_state.pipeline_start_pending = True
             st.session_state.pipeline_run_options = {
@@ -193,20 +191,20 @@ def _page_run() -> None:
         )
         update_run_status(None, starting=True, force=True)
 
-    render_run_progress_poll_fragment(output_path, config, panel)
+    render_run_progress_poll_fragment(output_path, config)
+
+    if not st.session_state.pipeline_running:
+        panel = get_live_progress_panel(output_path)
+        progress = st.session_state.get("_live_run_final_snapshot")
+        if progress is None:
+            progress = load_pipeline_progress(output_path, config)
+        if progress:
+            if not st.session_state.get("_run_status_message"):
+                update_run_status(progress, force=True)
+            panel.update(progress, force=True)
 
     if st.session_state.get("run_page_error"):
         st.error(st.session_state["run_page_error"])
-
-    if (
-        not run_clicked
-        and not st.session_state.pipeline_running
-        and not st.session_state.get("pipeline_start_pending")
-    ):
-        progress = load_pipeline_progress(output_path, config)
-        if progress:
-            update_run_status(progress, force=True)
-            panel.update(progress, force=True)
 
 
 def _save_review_queue(queue_path: Path, edited) -> bool:
