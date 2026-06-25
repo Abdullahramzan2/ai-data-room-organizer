@@ -193,7 +193,7 @@ Open `config/default.yaml` — thresholds, guardrails, duplicate settings, `inde
 Share:
 
 - `docs/USER_GUIDE.md`
-- `docs/INSTALLATION_WINDOWS.md`
+- `README.md` — installation and command reference
 - `docs/TESTING.md`
 - `docs/MILESTONE_4.md`
 - `README.md`

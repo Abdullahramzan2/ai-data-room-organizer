@@ -1,6 +1,6 @@
 # User Guide — Data Room Organizer
 
-Operator guide for Carl Quesinberry and team. For installation, see `docs/INSTALLATION_WINDOWS.md`. For a live walkthrough, see `docs/DEMO.md`.
+Operator guide for Carl Quesinberry and team. For installation, see **Windows installation** in `README.md`. For a live walkthrough, see `docs/DEMO.md`.
 
 ---
 
@@ -223,7 +223,7 @@ dataroom ui
 
 ## Related documents
 
-- `docs/INSTALLATION_WINDOWS.md` — setup from scratch
+- `README.md` — installation and command reference
 - `docs/DEMO.md` — guided demo for stakeholders
 - `docs/TESTING.md` — QA / acceptance checklist
 - `docs/CALIBRATION.md` — tuning thresholds and taxonomy

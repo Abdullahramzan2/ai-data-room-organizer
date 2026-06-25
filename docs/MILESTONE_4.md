@@ -163,7 +163,7 @@ The UI invokes `dataroom run` / `dataroom rerun` in a **background subprocess** 
 |----------|----------|
 | `README.md` | Quick install and command reference |
 | `docs/USER_GUIDE.md` | Day-to-day operator workflow |
-| `docs/INSTALLATION_WINDOWS.md` | Full Windows setup for Carl's team |
+| `README.md` | Install, commands, and Windows setup |
 | `docs/DEMO.md` | Step-by-step demo script |
 | `docs/TESTING.md` | QA / acceptance test checklist |
 | `docs/CALIBRATION.md` | Threshold and taxonomy tuning (updated for rerun) |

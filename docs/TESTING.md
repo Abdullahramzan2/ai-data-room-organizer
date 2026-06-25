@@ -1,6 +1,6 @@
 # QA / Acceptance Testing Guide
 
-Checklist for validating **v0.4.0** before delivery or after changes. Run on a Windows machine with the full install (`docs/INSTALLATION_WINDOWS.md`).
+Checklist for validating **v0.4.0** before delivery or after changes. Run on a Windows machine with the full install (`README.md` → **Windows installation**).
 
 ---
 
