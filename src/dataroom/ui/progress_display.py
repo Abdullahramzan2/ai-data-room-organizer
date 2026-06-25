@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import streamlit as st
+
+from dataroom.pipeline.progress import summarize_file_progress
 
 
 def _status_icon(status: str) -> str:
@@ -17,6 +21,7 @@ def _status_icon(status: str) -> str:
         "classifying": "🤖",
         "done": "✅",
         "failed": "❌",
+        "skipped": "⏭️",
     }.get(status, "•")
 
 
@@ -81,10 +86,9 @@ def render_duplicate_pairs_table(pairs: list[dict[str, Any]]) -> None:
 
 
 def get_run_status_slot() -> Any:
-    slot = st.session_state.get("_run_status_slot")
-    if slot is None:
-        slot = st.empty()
-        st.session_state["_run_status_slot"] = slot
+    """Allocate a fresh status placeholder (Streamlit empties go stale after rerun)."""
+    slot = st.empty()
+    st.session_state["_run_status_slot"] = slot
     return slot
 
 
@@ -126,7 +130,9 @@ def update_run_status(
 
 
 def _paint_run_status(message: str) -> None:
-    slot = get_run_status_slot()
+    slot = st.session_state.get("_run_status_slot")
+    if slot is None:
+        return
     if message == "Pipeline finished.":
         slot.success(message)
     elif st.session_state.get("_run_status_is_error"):
@@ -149,7 +155,6 @@ def _panel_session_key(output_path: Path) -> str:
 def reset_live_progress_panel(output_path: Path) -> None:
     st.session_state.pop(_panel_session_key(output_path), None)
     st.session_state.pop("_run_status_slot", None)
-    st.session_state.pop("_run_status_message", None)
     st.session_state.pop("_run_status_is_error", None)
 
 
@@ -197,7 +202,9 @@ class LiveProgressPanel:
         return "|".join(
             [
                 str(snapshot.get("status", "")),
+                str(snapshot.get("phase", "")),
                 str(snapshot.get("total_files", "")),
+                str(snapshot.get("ingested_count", "")),
                 str(snapshot.get("classified_count", "")),
                 str(snapshot.get("review_queue_count", "")),
                 str(snapshot.get("duplicate_pair_count", "")),
@@ -208,7 +215,11 @@ class LiveProgressPanel:
     def _progress_key(self, snapshot: dict[str, Any]) -> str:
         total = int(snapshot.get("total_files", 0))
         classified = int(snapshot.get("classified_count", 0))
-        return f"{snapshot.get('status', '')}:{classified}/{total}"
+        ingested = int(snapshot.get("ingested_count", 0))
+        return (
+            f"{snapshot.get('status', '')}:{snapshot.get('phase', '')}:"
+            f"{ingested}/{classified}/{total}"
+        )
 
     def _files_key(self, snapshot: dict[str, Any]) -> str:
         files = snapshot.get("files") or []
@@ -230,42 +241,82 @@ class LiveProgressPanel:
             return
 
         status = str(snapshot.get("status", "running"))
-        total = int(snapshot.get("total_files", 0))
-        classified = int(snapshot.get("classified_count", 0))
+        phase = str(snapshot.get("phase", ""))
+        files = snapshot.get("files") or []
+        counts = summarize_file_progress(files, total=int(snapshot.get("total_files", 0)))
+        total = counts["total"]
+        classified = counts["classified"]
+        ingested = counts["ingested"]
+        failed = counts["failed"]
+        terminal = counts["terminal"]
         review_count = int(snapshot.get("review_queue_count", 0))
         duplicates = int(snapshot.get("duplicate_pair_count", 0))
-        failed = int(snapshot.get("failed_count", 0))
 
-        metrics_key = self._metrics_key(snapshot)
+        metrics_key = "|".join(
+            [
+                status,
+                phase,
+                str(total),
+                str(ingested),
+                str(classified),
+                str(review_count),
+                str(duplicates),
+                str(failed),
+            ]
+        )
         if force or metrics_key != self._last_metrics_key:
             self._last_metrics_key = metrics_key
             with self._metrics.container():
                 if total > 0 and status in {"running", "complete", "failed"}:
                     c1, c2, c3, c4, c5 = st.columns(5)
                     c1.metric("Total files", total)
-                    c2.metric("Classified", classified)
+                    if status == "running" and phase == "ingesting":
+                        c2.metric("Ingested", ingested)
+                    else:
+                        c2.metric("Classified", classified)
                     c3.metric("Review queue", review_count)
                     c4.metric("Duplicates", duplicates)
                     c5.metric("Failed", failed)
 
-        progress_key = self._progress_key(snapshot)
+        progress_key = f"{status}:{phase}:{ingested}/{classified}/{terminal}/{total}"
         if force or progress_key != self._last_progress_key:
             self._last_progress_key = progress_key
             with self._progress.container():
                 if total > 0 and status == "running":
-                    st.progress(
-                        min(1.0, classified / total),
-                        text=f"Classified {classified} of {total}",
-                    )
-                elif total > 0 and status in {"complete", "failed"}:
-                    if failed:
-                        label = f"Finished — {classified} classified, {failed} failed ({total} total)"
+                    if phase == "ingesting":
+                        st.progress(
+                            min(1.0, ingested / total),
+                            text=f"Ingested {ingested} of {total}",
+                        )
+                    elif phase == "classifying":
+                        st.progress(
+                            min(1.0, classified / total),
+                            text=f"Classified {classified} of {total}",
+                        )
                     else:
-                        label = f"Finished — {classified} of {total} classified"
-                    st.progress(1.0, text=label)
+                        done_steps = max(ingested, classified)
+                        st.progress(
+                            min(1.0, done_steps / total),
+                            text=f"Processing… {done_steps} of {total}",
+                        )
+                elif total > 0 and status in {"complete", "failed"}:
+                    if terminal >= total:
+                        if failed:
+                            label = (
+                                f"Finished — {classified} classified, {failed} failed ({total} total)"
+                            )
+                        else:
+                            label = f"Finished — {classified} of {total} classified"
+                        st.progress(1.0, text=label)
+                    else:
+                        st.progress(
+                            min(1.0, terminal / total),
+                            text=f"Finishing… {classified} classified, {ingested} ingested ({total} total)",
+                        )
 
         files_key = self._files_key(snapshot)
-        if force or files_key != self._last_files_key:
+        refresh_files = force or files_key != self._last_files_key or status == "running"
+        if refresh_files:
             self._last_files_key = files_key
             with self._files.container():
                 file_rows = _file_table_rows(snapshot)
@@ -276,7 +327,6 @@ class LiveProgressPanel:
                         hide_index=True,
                         width="stretch",
                         height=min(420, 38 + len(file_rows) * 35),
-                        key="pipeline_live_files",
                     )
 
         duplicates_key = self._duplicates_key(snapshot)
@@ -288,3 +338,57 @@ class LiveProgressPanel:
                     dup_rows = _duplicate_table_rows(dup_pairs)
                     st.markdown("**Duplicate pairs**")
                     st.dataframe(pd.DataFrame(dup_rows), hide_index=True, width="stretch")
+
+
+def render_run_progress_poll_fragment(
+    output_path: Path,
+    config: dict[str, Any],
+    panel: LiveProgressPanel,
+    *,
+    on_complete: Callable[[], None] | None = None,
+) -> None:
+    """Poll run_progress.json while a background pipeline job is active."""
+    from dataroom.ui.helpers import load_pipeline_progress
+    from dataroom.ui.pipeline_runner import (
+        PipelineSubprocessError,
+        clear_active_pipeline_job,
+        get_active_pipeline_job,
+    )
+
+    @st.fragment(run_every=timedelta(seconds=0.4))
+    def _poll() -> None:
+        if not st.session_state.get("pipeline_running"):
+            return
+
+        snapshot = load_pipeline_progress(output_path, config)
+        if snapshot:
+            update_run_status(snapshot)
+            panel.update(snapshot, force=True)
+        else:
+            update_run_status(None, starting=True, force=True)
+
+        job = get_active_pipeline_job()
+        if job is None or not job.done:
+            return
+
+        try:
+            if job.error is not None:
+                if isinstance(job.error, PipelineSubprocessError):
+                    st.session_state["run_page_error"] = str(job.error)
+                else:
+                    st.session_state["run_page_error"] = f"Pipeline failed: {job.error}"
+            else:
+                st.session_state.pop("run_page_error", None)
+
+            final_progress = load_pipeline_progress(output_path, config)
+            if final_progress:
+                update_run_status(final_progress, force=True)
+                panel.update(final_progress, force=True)
+        finally:
+            clear_active_pipeline_job()
+            st.session_state.pipeline_running = False
+            if on_complete is not None:
+                on_complete()
+            st.rerun()
+
+    _poll()

@@ -49,6 +49,25 @@ def test_unsupported_extension_skipped(tmp_path: Path):
     assert len(result.skipped_files) == 0  # not even scanned as supported
 
 
+def test_on_file_complete_called_per_file(tmp_path: Path):
+    (tmp_path / "a.txt").write_text("first file", encoding="utf-8")
+    (tmp_path / "b.txt").write_text("second file", encoding="utf-8")
+    completed: list[tuple[str, str]] = []
+
+    def on_file_complete(path: Path, outcome: str, error: str) -> None:
+        completed.append((path.name, outcome))
+
+    run_ingestion(
+        tmp_path,
+        supported_extensions=[".txt"],
+        recursive=False,
+        ocr_config=OcrConfig(enabled=False),
+        on_file_complete=on_file_complete,
+    )
+
+    assert completed == [("a.txt", "ingested"), ("b.txt", "ingested")]
+
+
 def _minimal_xlsx() -> bytes:
     from io import BytesIO
 

@@ -123,6 +123,15 @@ def run_pipeline(
         def on_ingest_progress(index: int, total: int, path: Path) -> None:
             tracker.file_ingesting(path, index, total)
 
+        def on_ingest_complete(path: Path, outcome: str, error: str) -> None:
+            if outcome == "ingested":
+                tracker.file_ingested(path)
+            elif outcome == "failed":
+                tracker.file_failed(path, error)
+            elif outcome == "skipped":
+                tracker.file_skipped(path)
+
+        tracker.begin_ingestion()
         ingestion_result = run_ingestion(
             input_dir,
             supported_extensions=supported_extensions,
@@ -132,11 +141,8 @@ def run_pipeline(
             max_file_size_bytes=ingest_cfg.get("max_file_size_bytes", 0),
             max_text_chars=ingest_cfg.get("max_text_chars", 500_000),
             on_progress=on_ingest_progress,
+            on_file_complete=on_ingest_complete,
         )
-        for doc in ingestion_result.documents:
-            tracker.file_ingested(doc.metadata.source_path)
-        for path, error in ingestion_result.failed_files:
-            tracker.file_failed(path, error)
         tracker.set_skipped_count(len(ingestion_result.skipped_files))
 
         ingestion_docs = [d.to_dict() for d in ingestion_result.documents]

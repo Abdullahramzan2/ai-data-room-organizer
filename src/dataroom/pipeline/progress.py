@@ -121,6 +121,34 @@ def load_run_progress(path: Path) -> dict[str, Any] | None:
     return None
 
 
+def summarize_file_progress(files: list[dict[str, Any]], *, total: int = 0) -> dict[str, int]:
+    """Derive live counts from per-file rows (source of truth for the UI)."""
+    effective_total = total or len(files)
+    ingested = 0
+    classified = 0
+    failed = 0
+    skipped = 0
+    for row in files:
+        status = str(row.get("status", ""))
+        if status in {"ingested", "classifying", "done", "failed", "skipped"}:
+            ingested += 1
+        if status == "done" and row.get("category_folder"):
+            classified += 1
+        if status == "failed":
+            failed += 1
+        if status == "skipped":
+            skipped += 1
+    terminal = classified + failed + skipped
+    return {
+        "total": effective_total,
+        "ingested": ingested,
+        "classified": classified,
+        "failed": failed,
+        "skipped": skipped,
+        "terminal": terminal,
+    }
+
+
 @dataclass
 class FileProgressRow:
     file_name: str
@@ -199,6 +227,14 @@ class RunProgressTracker:
         self.phase = "ready"
         self.flush(force=True)
 
+    def begin_ingestion(self) -> None:
+        """Mark every pending file as ingesting when the ingestion phase starts."""
+        for row in self.files.values():
+            if row.status == "pending":
+                row.status = "ingesting"
+        self.phase = "ingesting"
+        self.flush(force=True)
+
     def set_phase(self, phase: str, *, current_file: str = "") -> None:
         self.phase = phase
         if current_file:
@@ -206,17 +242,26 @@ class RunProgressTracker:
         self.flush(force=True)
 
     def file_ingesting(self, path: Path, index: int, total: int) -> None:
-        key = str(path.resolve())
-        row = self.files.get(key)
-        if row is None:
-            row = FileProgressRow(file_name=path.name, original_path=key)
-            self.files[key] = row
-            self._order.append(key)
-        row.status = "ingesting"
+        """Track the active file without changing other rows still ingesting."""
         self.current_file = path.name
         self.phase = "ingesting"
         self.total_files = max(self.total_files, total)
-        self.flush()
+        self.flush(force=True)
+
+    def _sync_counts_from_files(self) -> None:
+        self.ingested_count = sum(
+            1
+            for row in self.files.values()
+            if row.status in {"ingested", "classifying", "done", "failed", "skipped"}
+        )
+        self.classified_count = sum(
+            1
+            for row in self.files.values()
+            if row.status == "done" and bool(row.category_folder)
+        )
+        self.failed_count = sum(1 for row in self.files.values() if row.status == "failed")
+        self.skipped_count = sum(1 for row in self.files.values() if row.status == "skipped")
+        self.review_queue_count = sum(1 for row in self.files.values() if row.needs_review)
 
     def file_ingested(self, path: Path) -> None:
         key = str(path.resolve())
@@ -226,8 +271,19 @@ class RunProgressTracker:
             self.files[key] = row
             self._order.append(key)
         row.status = "ingested"
-        self.ingested_count = sum(1 for f in self.files.values() if f.status in {"ingested", "classifying", "done"})
-        self.flush()
+        self._sync_counts_from_files()
+        self.flush(force=True)
+
+    def file_skipped(self, path: Path) -> None:
+        key = str(path.resolve())
+        row = self.files.get(key)
+        if row is None:
+            row = FileProgressRow(file_name=path.name, original_path=key)
+            self.files[key] = row
+            self._order.append(key)
+        row.status = "skipped"
+        self._sync_counts_from_files()
+        self.flush(force=True)
 
     def file_classifying(self, path: Path) -> None:
         key = str(path.resolve())
@@ -237,7 +293,8 @@ class RunProgressTracker:
         row.status = "classifying"
         self.current_file = path.name
         self.phase = "classifying"
-        self.flush()
+        self._sync_counts_from_files()
+        self.flush(force=True)
 
     def file_classified(
         self,
@@ -257,9 +314,8 @@ class RunProgressTracker:
         row.category_folder = category_folder
         row.confidence = confidence
         row.needs_review = needs_review
-        self.classified_count = sum(1 for f in self.files.values() if f.status == "done")
-        self.review_queue_count = sum(1 for f in self.files.values() if f.needs_review)
-        self.flush()
+        self._sync_counts_from_files()
+        self.flush(force=True)
 
     def file_failed(self, path: Path, error: str) -> None:
         key = str(path.resolve())
@@ -271,8 +327,7 @@ class RunProgressTracker:
         row.status = "failed"
         row.error = error
         row.needs_review = True
-        self.failed_count = sum(1 for f in self.files.values() if f.status == "failed")
-        self.review_queue_count = sum(1 for f in self.files.values() if f.needs_review)
+        self._sync_counts_from_files()
         self.flush(force=True)
 
     def set_duplicate_pairs(self, pairs: list[dict[str, str]]) -> None:
@@ -294,13 +349,10 @@ class RunProgressTracker:
         self.current_file = ""
         if summary:
             self.review_queue_count = int(summary.get("review_queue_count", self.review_queue_count))
-            self.duplicate_pair_count = int(summary.get("duplicate_pair_count", self.duplicate_pair_count))
-            self.failed_count = int(summary.get("ingestion_failed_count", 0)) + int(
-                summary.get("organize_failed_count", 0)
+            self.duplicate_pair_count = int(
+                summary.get("duplicate_pair_count", self.duplicate_pair_count)
             )
-            self.classified_count = int(summary.get("processed", self.classified_count))
-            self.ingested_count = int(summary.get("processed", self.ingested_count))
-            self.total_files = max(self.total_files, int(summary.get("processed", 0)))
+        self._sync_counts_from_files()
         self.flush(force=True)
 
     def fail(self, message: str) -> None:

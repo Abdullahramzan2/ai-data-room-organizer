@@ -66,6 +66,80 @@ def test_file_failed_counts_toward_review_queue(tmp_path: Path):
     assert loaded["files"][0]["status"] == "failed"
 
 
+def test_file_ingested_updates_progress_incrementally(tmp_path: Path):
+    tracker = RunProgressTracker.start(tmp_path / "out", input_dir=tmp_path / "in")
+    first = tmp_path / "in" / "a.txt"
+    second = tmp_path / "in" / "b.txt"
+    tracker.register_files([first, second])
+    tracker.begin_ingestion()
+    loaded = load_run_progress(tracker.path)
+    assert loaded is not None
+    assert loaded["files"][0]["status"] == "ingesting"
+    assert loaded["files"][1]["status"] == "ingesting"
+
+    tracker.file_ingested(first)
+    loaded = load_run_progress(tracker.path)
+    assert loaded is not None
+    assert loaded["ingested_count"] == 1
+    assert loaded["classified_count"] == 0
+    assert loaded["files"][0]["status"] == "ingested"
+    assert loaded["files"][1]["status"] == "ingesting"
+
+    tracker.file_ingested(second)
+    loaded = load_run_progress(tracker.path)
+    assert loaded is not None
+    assert loaded["ingested_count"] == 2
+    assert loaded["classified_count"] == 0
+    assert loaded["files"][1]["status"] == "ingested"
+
+
+def test_ingested_does_not_count_as_classified(tmp_path: Path):
+    tracker = RunProgressTracker.start(tmp_path / "out", input_dir=tmp_path / "in")
+    path = tmp_path / "in" / "a.txt"
+    tracker.register_files([path])
+    tracker.begin_ingestion()
+    tracker.file_ingested(path)
+
+    loaded = load_run_progress(tracker.path)
+    assert loaded is not None
+    assert loaded["ingested_count"] == 1
+    assert loaded["classified_count"] == 0
+    assert loaded["files"][0]["status"] == "ingested"
+    assert loaded["files"][0]["category_folder"] == ""
+
+
+def test_complete_recounts_from_file_rows(tmp_path: Path):
+    tracker = RunProgressTracker.start(tmp_path / "out", input_dir=tmp_path / "in")
+    first = tmp_path / "in" / "a.txt"
+    second = tmp_path / "in" / "b.txt"
+    tracker.register_files([first, second])
+    tracker.begin_ingestion()
+    tracker.file_ingested(first)
+    tracker.file_ingested(second)
+    tracker.file_classified(
+        first,
+        category_folder="01_Project_Overview",
+        confidence="high",
+        needs_review=False,
+    )
+
+    tracker.complete({"processed": 99, "review_queue_count": 0, "duplicate_pair_count": 0})
+    loaded = load_run_progress(tracker.path)
+    assert loaded is not None
+    assert loaded["classified_count"] == 1
+    assert loaded["ingested_count"] == 2
+
+
+def test_begin_ingestion_marks_all_pending_as_ingesting(tmp_path: Path):
+    tracker = RunProgressTracker.start(tmp_path / "out", input_dir=tmp_path / "in")
+    paths = [tmp_path / "in" / f"f{i}.txt" for i in range(3)]
+    tracker.register_files(paths)
+    tracker.begin_ingestion()
+    loaded = load_run_progress(tracker.path)
+    assert loaded is not None
+    assert all(row["status"] == "ingesting" for row in loaded["files"])
+
+
 def test_progress_flush_retries_on_lock(tmp_path: Path, monkeypatch):
     tracker = RunProgressTracker.start(tmp_path / "out", input_dir=tmp_path / "in")
     tracker.register_files([tmp_path / "in" / "a.txt"])

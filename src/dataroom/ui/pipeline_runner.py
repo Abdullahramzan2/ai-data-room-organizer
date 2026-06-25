@@ -4,16 +4,34 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import threading
 import time
+import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from dataroom.config import load_app_config
 from dataroom.pipeline.progress import default_progress_path, load_run_progress
 from dataroom.ui.helpers import load_run_summary
 
 ProgressCallback = Callable[[dict], None]
+
+_job_lock = threading.Lock()
+_active_job: AsyncPipelineJob | None = None
+
+
+@dataclass
+class AsyncPipelineJob:
+    """Background pipeline subprocess tracked outside Streamlit session state."""
+
+    job_id: str
+    thread: threading.Thread
+    done: bool = False
+    result: SubprocessResult | None = None
+    error: BaseException | None = None
+    kwargs: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -146,7 +164,7 @@ def run_pipeline_subprocess(
     no_ocr: bool = False,
     no_recursive: bool = False,
     on_progress: ProgressCallback | None = None,
-    poll_interval: float = 0.75,
+    poll_interval: float = 0.4,
 ) -> SubprocessResult:
     """Run ``dataroom run`` in a child process and return run_summary.json."""
     cmd = _build_run_cmd(
@@ -183,13 +201,114 @@ def run_pipeline_subprocess(
     return SubprocessResult(summary=summary, log=log)
 
 
+def get_active_pipeline_job() -> AsyncPipelineJob | None:
+    with _job_lock:
+        return _active_job
+
+
+def clear_active_pipeline_job() -> None:
+    global _active_job
+    with _job_lock:
+        _active_job = None
+
+
+def _set_active_job(job: AsyncPipelineJob | None) -> None:
+    global _active_job
+    with _job_lock:
+        _active_job = job
+
+
+def _mark_job_finished(job_id: str, *, result: SubprocessResult | None, error: BaseException | None) -> None:
+    with _job_lock:
+        if _active_job is None or _active_job.job_id != job_id:
+            return
+        _active_job.result = result
+        _active_job.error = error
+        _active_job.done = True
+
+
+def start_pipeline_job(
+    input_dir: Path,
+    output_dir: Path,
+    *,
+    config_path: Path | None = None,
+    rename: bool = False,
+    no_ocr: bool = False,
+    no_recursive: bool = False,
+) -> str:
+    """Start ``dataroom run`` in a background thread; poll progress from disk."""
+    job_id = uuid.uuid4().hex
+    kwargs = {
+        "input_dir": input_dir,
+        "output_dir": output_dir,
+        "config_path": config_path,
+        "rename": rename,
+        "no_ocr": no_ocr,
+        "no_recursive": no_recursive,
+    }
+
+    def worker() -> None:
+        try:
+            result = run_pipeline_subprocess(
+                input_dir,
+                output_dir,
+                config_path=config_path,
+                rename=rename,
+                no_ocr=no_ocr,
+                no_recursive=no_recursive,
+                on_progress=None,
+            )
+            _mark_job_finished(job_id, result=result, error=None)
+        except BaseException as exc:
+            _mark_job_finished(job_id, result=None, error=exc)
+
+    thread = threading.Thread(target=worker, name=f"dataroom-run-{job_id[:8]}", daemon=True)
+    job = AsyncPipelineJob(job_id=job_id, thread=thread, kwargs=kwargs)
+    _set_active_job(job)
+    thread.start()
+    return job_id
+
+
+def start_rerun_job(
+    output_dir: Path,
+    *,
+    config_path: Path | None = None,
+    rename: bool = False,
+) -> str:
+    """Start ``dataroom rerun`` in a background thread; poll progress from disk."""
+    job_id = uuid.uuid4().hex
+    kwargs = {
+        "output_dir": output_dir,
+        "config_path": config_path,
+        "rename": rename,
+    }
+
+    def worker() -> None:
+        try:
+            result = run_rerun_subprocess(
+                output_dir,
+                config_path=config_path,
+                rename=rename,
+                on_progress=None,
+            )
+            _mark_job_finished(job_id, result=result, error=None)
+        except BaseException as exc:
+            _mark_job_finished(job_id, result=None, error=exc)
+
+    thread = threading.Thread(target=worker, name=f"dataroom-rerun-{job_id[:8]}", daemon=True)
+    job = AsyncPipelineJob(job_id=job_id, thread=thread, kwargs=kwargs)
+    _set_active_job(job)
+    thread.start()
+    return job_id
+
+
 def run_rerun_subprocess(
     output_dir: Path,
     *,
     config_path: Path | None = None,
     rename: bool = False,
     on_progress: ProgressCallback | None = None,
-    poll_interval: float = 0.75,
+    poll_interval: float = 0.4,
 ) -> SubprocessResult:
     """Run ``dataroom rerun`` in a child process and return run_summary.json."""
     cmd = _build_rerun_cmd(output_dir, config_path=config_path, rename=rename)
