@@ -55,21 +55,23 @@ Options:
 
 Open the output folder:
 
-| File | Use |
-|------|-----|
-| `run_summary.json` | Quick counts (processed, organized, review queue, duplicates) |
-| `manifest.csv` / `manifest.xlsx` | Full per-file record — open in Excel |
-| `index.html` | Double-click to browse with search (no server needed) |
-| `review_queue.csv` | Files needing human attention |
-| `duplicate_report.csv` | Exact and near-duplicate pairs |
-| `errors_report.csv` | Skipped or failed files |
-| `classification_log.csv` | Per-file classification audit trail |
-| `processing_log.json` | Run metadata, counts, and timings |
-| `audit_log.jsonl` | Tier 3 LLM escalation decisions (API/guardrails only) |
+| File | Location | Use |
+|------|----------|-----|
+| `run_summary.json` | Output root | Quick counts (processed, organized, review queue, duplicates, timings) |
+| `manifest.xlsx` | `00_Admin_and_Index/` | Full per-file record — open in Excel |
+| `index.html` | `00_Admin_and_Index/` | Double-click to browse with search (no server needed) |
+| `review_queue.xlsx` | `00_Admin_and_Index/` | Files needing human attention |
+| `duplicate_report.xlsx` | `00_Admin_and_Index/` | Exact and near-duplicate pairs |
+| `errors_report.xlsx` | `00_Admin_and_Index/` | Skipped or failed files |
+| `classification_log.xlsx` | `00_Admin_and_Index/` | Per-file classification audit trail |
+| `processing_log.json` | `00_Admin_and_Index/` | Run metadata, counts, and timings |
+| `source_authentication_matrix.xlsx` | `00_Admin_and_Index/` | Source authentication matrix |
+| `audit_log.jsonl` | Output root | Tier 3 LLM escalation decisions (API/guardrails only) |
+| `ingestion_cache.json` / `classification_cache.json` | Output root | Rerun caches (used by `dataroom rerun`) |
 
-Organized copies live in subfolders `00_…` through `19_…` under the output directory.
+Organized document copies live in taxonomy subfolders `01_…` through `19_…` under the output directory.
 
-**Admin folder (`00_Admin_and_Index/`):** Carl spec admin deliverables are written here — master index (`index.html`), manifest, classification log, review queue, duplicate report, source authentication matrix, errors report, and processing log. Operational caches and `run_summary.json` stay at the output root for the tool; a copy of `run_summary.json` is also placed in folder 00.
+**Admin folder (`00_Admin_and_Index/`):** Carl-spec deliverables (manifest, index, review queue, duplicates, errors, classification log, processing log, source auth matrix). Operational files (`run_summary.json`, caches, `run_progress.json`, `audit_log.jsonl`) stay at the **output root only**.
 
 ---
 
@@ -104,7 +106,7 @@ Source and ShortDesc segments are omitted when not detected. Example:
 
 **Option B — CSV**
 
-1. Edit `review_queue.csv`
+1. Edit `00_Admin_and_Index/review_queue.xlsx` (or use the UI **Review** tab)
 2. Fill `corrected_folder` with a valid folder name (e.g. `04_Zoning_Land_Use_and_Local_Approvals`)
 3. Save the file
 4. Run:
@@ -166,7 +168,7 @@ When `duplicates.enabled: true` (default):
 - **Exact** — same SHA-256 file hash
 - **Near** — high text similarity (configurable threshold)
 
-Review `duplicate_report.csv` before sharing the data room externally. When `duplicates.flag_for_review` is enabled (default), files in duplicate pairs are also added to `review_queue.csv` with a duplicate reason appended.
+Review `00_Admin_and_Index/duplicate_report.xlsx` before sharing the data room externally. When `duplicates.flag_for_review` is enabled (default), files in duplicate pairs are also added to `review_queue.xlsx` with a duplicate reason appended.
 
 The tool reports duplicates within the scanned input batch; it does not delete or merge files automatically, and it does not detect duplicates across separate runs or unrelated folders.
 
@@ -197,10 +199,10 @@ KMZ and DWG files are always **local-only** — never sent to external APIs.
 | Legacy `.doc` fails | Install LibreOffice; check doctor |
 | `rerun` says missing cache | Run full `dataroom run` first on that output folder |
 | UI shows subprocess error | Read the error message; fix paths or run `dataroom doctor` |
-| Cannot save review queue | Close `review_queue.csv` in Excel or another editor, then retry |
+| Cannot save review queue | Close `review_queue.xlsx` in Excel or another editor, then retry |
 | Ollama not used | Start `ollama serve`; set `REASONING_PROVIDER=ollama` in `.env` |
 | Same file in/out of review queue | Tier 3 (Ollama) is non-deterministic for ambiguous docs — see `docs/CALIBRATION.md` |
-| Review queue empty but files look wrong | Check `manifest.csv` — only medium/low confidence rows appear in review queue |
+| Review queue empty but files look wrong | Check `00_Admin_and_Index/manifest.xlsx` — only medium/low confidence rows appear in review queue |
 | Re-run stacks `_2`, `_3` filenames | Use a fresh output folder for clean demos; rerun does not delete old copies |
 | Duplicates not found | Duplicates are within the **input batch only**, not across folders or prior runs |
 

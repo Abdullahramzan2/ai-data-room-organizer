@@ -17,7 +17,6 @@ from dataroom.export import (
     write_review_queue,
 )
 from dataroom.export.admin_outputs import (
-    copy_run_summary_to_admin,
     keep_admin_artifacts_at_root,
     resolve_admin_artifact_paths,
 )
@@ -176,7 +175,7 @@ def finalize_run_exports(
     *,
     run_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Write processing_log.json to folder 00 and copy run_summary into admin folder."""
+    """Write processing_log.json to folder 00 (run_summary stays at output root only)."""
     admin_paths = resolve_admin_artifact_paths(output_dir, config)
     processing_log_path = admin_paths.processing_log
     ctx = dict(run_context or {})
@@ -187,7 +186,6 @@ def finalize_run_exports(
     summary["processing_log"] = str(processing_log_path)
     _maybe_copy_to_root(processing_log_path, output_dir, config)
 
-    copy_run_summary_to_admin(output_dir, config)
     summary["admin_folder"] = str(admin_paths.admin_dir)
     summary["admin_artifact_count"] = sum(
         1 for path in admin_paths.admin_dir.iterdir() if path.is_file()

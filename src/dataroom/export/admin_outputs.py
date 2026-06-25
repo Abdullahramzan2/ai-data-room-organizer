@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -17,7 +16,6 @@ ADMIN_ARTIFACT_KEYS = (
     "classification_log",
     "processing_log",
     "source_auth_matrix",
-    "run_summary",
 )
 
 
@@ -89,8 +87,20 @@ def resolve_artifact_path(
     summary: dict[str, Any] | None = None,
 ) -> Path:
     """
-    Locate an artifact for UI/CLI: run_summary path → admin folder 00 → legacy output root.
+    Locate an artifact for UI/CLI: summary path → admin folder 00 → legacy output root.
+
+    ``run_summary.json`` always resolves to the output root (never folder 00).
     """
+    if default_name == "run_summary.json":
+        root_path = output_dir / "run_summary.json"
+        if root_path.is_file():
+            return root_path
+        if summary_key and summary and summary.get(summary_key):
+            path = Path(str(summary[summary_key]))
+            if path.is_file():
+                return path
+        return root_path
+
     if summary_key and summary and summary.get(summary_key):
         path = Path(str(summary[summary_key]))
         if path.is_file():
@@ -101,13 +111,3 @@ def resolve_artifact_path(
         return admin_path
 
     return output_dir / default_name
-
-
-def copy_run_summary_to_admin(output_dir: Path, config: dict[str, Any]) -> Path | None:
-    """Copy run_summary.json into folder 00 after the final summary is written."""
-    source = output_dir / "run_summary.json"
-    if not source.is_file():
-        return None
-    dest = resolve_admin_artifact_paths(output_dir, config).admin_dir / "run_summary.json"
-    shutil.copy2(source, dest)
-    return dest

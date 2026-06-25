@@ -4,7 +4,6 @@ from pathlib import Path
 
 from dataroom.export.admin_outputs import (
     admin_folder_name,
-    copy_run_summary_to_admin,
     resolve_admin_artifact_paths,
     resolve_artifact_path,
 )
@@ -18,14 +17,21 @@ def test_resolve_admin_artifact_paths_under_folder_00(tmp_path: Path):
     assert paths.source_auth_matrix.name == "source_authentication_matrix.xlsx"
 
 
-def test_copy_run_summary_to_admin(tmp_path: Path):
+def test_run_summary_not_copied_to_admin(tmp_path: Path):
     output_dir = tmp_path / "out"
     output_dir.mkdir()
     (output_dir / "run_summary.json").write_text("{}", encoding="utf-8")
     config = {"output": {"admin_folder": "00_Admin_and_Index"}}
-    dest = copy_run_summary_to_admin(output_dir, config)
-    assert dest is not None
-    assert dest.parent.name == "00_Admin_and_Index"
+    admin_dir = output_dir / "00_Admin_and_Index"
+    admin_dir.mkdir()
+    assert not (admin_dir / "run_summary.json").is_file()
+    path = resolve_artifact_path(
+        output_dir,
+        config,
+        summary_key=None,
+        default_name="run_summary.json",
+    )
+    assert path == output_dir / "run_summary.json"
 
 
 def test_resolve_artifact_path_prefers_admin_folder(tmp_path: Path):

@@ -27,7 +27,7 @@ guardrails:
   escalation_confidence_threshold: 0.50   # LLM called only when local score is below this
 ```
 
-**Workflow:** change values → rerun the same folder → compare `review_queue.csv` and `run_summary.json` (`review_queue_count`).
+**Workflow:** change values → rerun the same folder → compare `00_Admin_and_Index/review_queue.xlsx` and `run_summary.json` at the output root (`review_queue_count`).
 
 ```powershell
 dataroom run "C:\path\to\folder" --output-dir output\calibration_run_2
@@ -63,7 +63,7 @@ No reinstall or cache clear is required. Embedding cache under `output/.cache` i
 
 ## 3. Interpret the review queue and act on it
 
-After each run, open `review_queue.csv` in the output directory. It lists only rows where `needs_review` is true in `manifest.csv`.
+After each run, open `00_Admin_and_Index/review_queue.xlsx`. It lists only rows where `needs_review` is true in `manifest.xlsx`.
 
 | Column | Meaning |
 |--------|---------|
@@ -85,7 +85,7 @@ After each run, open `review_queue.csv` in the output directory. It lists only r
 | **Low confidence / review queue** | Add keywords; rerun. If still ambiguous, Tier 3 (Ollama/enterprise) may help in `hybrid` mode |
 | **Consistently misclassified type** | Add a dedicated keyword phrase from filename or extracted text (see KMZ example below) |
 
-The full audit trail is in `manifest.csv` (`classification_method`, `classification_basis`, `reasoning_provider`, `extracted_geo_signals` for KMZ).
+The full audit trail is in `00_Admin_and_Index/manifest.xlsx` (`classification_method`, `classification_basis`, `reasoning_provider`, `extracted_geo_signals` for KMZ).
 
 ---
 
@@ -136,7 +136,7 @@ keywords:
 
 ### Takeaway
 
-1. Inspect `manifest.csv` → `extracted_geo_signals` and `supporting_terms` for KMZ/DWG files.
+1. Inspect `manifest.xlsx` → `extracted_geo_signals` and `supporting_terms` for KMZ/DWG files.
 2. Add missing terms to the **intended** taxonomy category.
 3. Rerun once — no code change.
 
@@ -150,7 +150,7 @@ If `01` and `09` both match, the higher keyword score wins; tighten keywords or 
 dataroom run "C:\path\to\folder" --output-dir output\run_v1
 # Edit config/default.yaml and/or taxonomy/real_estate_development.yaml
 dataroom run "C:\path\to\folder" --output-dir output\run_v2
-# Compare review_queue.csv and review_queue_count in run_summary.json
+# Compare 00_Admin_and_Index/review_queue.xlsx and review_queue_count in run_summary.json
 ```
 
 For classify-only iteration (faster after ingestion):
@@ -164,7 +164,7 @@ dataroom classify output\ingestion.json --output-dir output\run_v2 --output outp
 
 ## 5. Apply manual corrections without re-OCR
 
-After a full `dataroom run`, open `review_queue.csv`. Each row has a `corrected_folder` column (empty by default).
+After a full `dataroom run`, open `00_Admin_and_Index/review_queue.xlsx`. Each row has a `corrected_folder` column (empty by default).
 
 1. Set `corrected_folder` to a valid taxonomy folder name (e.g. `01_Project_Overview`).
 2. Save the file.
@@ -183,7 +183,7 @@ dataroom rerun output\run_v1
 
 Use the Streamlit **Review** tab for the same workflow with save + rerun buttons.
 
-**Ollama / Tier 3 variance:** For ambiguous documents, local scores may be below threshold and Ollama may return different confidence or category between runs. Files can move in or out of `review_queue.csv` without taxonomy changes. For stable behavior, add keywords to the taxonomy or set `REASONING_PROVIDER=local` to skip Tier 3.
+**Ollama / Tier 3 variance:** For ambiguous documents, local scores may be below threshold and Ollama may return different confidence or category between runs. Files can move in or out of `review_queue.xlsx` without taxonomy changes. For stable behavior, add keywords to the taxonomy or set `REASONING_PROVIDER=local` to skip Tier 3.
 
 **When to use full `dataroom run` instead of rerun:**
 

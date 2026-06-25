@@ -178,7 +178,8 @@ def test_finalize_run_exports_writes_processing_log_to_admin(tmp_path: Path):
     )
 
     assert (admin_dir / "processing_log.json").is_file()
-    assert (admin_dir / "run_summary.json").is_file()
+    assert not (admin_dir / "run_summary.json").is_file()
+    assert (output_dir / "run_summary.json").is_file()
     assert result["admin_artifact_count"] >= 5
     assert not (output_dir / "processing_log.json").is_file()
 

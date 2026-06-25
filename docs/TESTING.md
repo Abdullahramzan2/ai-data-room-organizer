@@ -25,11 +25,11 @@ dataroom run "C:\path\to\sample\folder" --output-dir output\qa_full
 | Check | Expected |
 |-------|----------|
 | Exit code | 0 |
-| `run_summary.json` | `processed` > 0, paths set |
-| Taxonomy folders | Copies under `00_…`–`19_…` |
-| Artifacts | `manifest.csv`, `manifest.xlsx`, `index.html`, `review_queue.csv`, `duplicate_report.csv`, `errors_report.csv`, `classification_log.csv`, `processing_log.json`, `audit_log.jsonl` |
-| Admin folder | Carl deliverables under `00_Admin_and_Index/` only (not duplicated at output root) |
-| Caches | `ingestion_cache.json`, `classification_cache.json` |
+| `run_summary.json` | Output root only | `processed` > 0, paths set |
+| Taxonomy folders | `01_…`–`19_…` | Organized document copies |
+| Admin folder (`00_Admin_and_Index/`) | Carl deliverables | `manifest.xlsx`, `index.html`, `review_queue.xlsx`, `duplicate_report.xlsx`, `errors_report.xlsx`, `classification_log.xlsx`, `processing_log.json`, `source_authentication_matrix.xlsx` |
+| Operational artifacts | Output root | `run_summary.json`, `run_progress.json`, `ingestion_cache.json`, `classification_cache.json`, `audit_log.jsonl` |
+| Admin folder | No duplicate of `run_summary.json` | Summary exists only at output root |
 | Originals | Source folder unchanged |
 
 ---
@@ -68,7 +68,7 @@ Use a dedicated output folder per test for clear counts.
 
 | Check | Expected |
 |-------|----------|
-| `--no-ocr` / checkbox | Faster ingestion; `manifest.csv` → `extraction_method` = `native` for text PDFs |
+| `--no-ocr` / checkbox | Faster ingestion; `manifest.xlsx` → `extraction_method` = `native` for text PDFs |
 | Classification | Still runs (Ollama/local tiers unchanged) |
 
 ### Non-recursive scan
@@ -89,7 +89,7 @@ Use a folder with intentional duplicate pairs (same file copied, or identical co
 | Check | Expected |
 |-------|----------|
 | `duplicate_pair_count` in summary | Matches pairs in input **batch** |
-| `duplicate_report.csv` | Lists exact (hash) and/or near-text pairs |
+| `duplicate_report.xlsx` in `00_Admin_and_Index/` | Lists exact (hash) and/or near-text pairs |
 | Organized output | Duplicates are **reported**, not removed |
 
 **Note:** Duplicates are detected **within a single run’s input batch**, not across unrelated folders or prior runs.
@@ -98,16 +98,16 @@ Use a folder with intentional duplicate pairs (same file copied, or identical co
 
 | Check | Expected |
 |-------|----------|
-| \duplicates.flag_for_review: true\ | Both files in a duplicate pair appear in eview_queue.csv\ |
-| eview_reason\ | Includes \Duplicate: exact duplicate\ or ear duplicate\ with partner filename |
-| \manifest.csv\ | \duplicate_status\, \duplicate_partner_path\, \	ext_snippet\, \document_type\ populated |
+| `duplicates.flag_for_review: true` | Both files in a duplicate pair appear in `review_queue.xlsx` |
+| `review_reason` | Includes `Duplicate: exact duplicate` or `near duplicate` with partner filename |
+| `manifest.xlsx` | `duplicate_status`, `duplicate_partner_path`, `text_snippet`, `document_type` populated |
 
 ---
 
 ## 5. Review queue and rerun
 
 1. Run pipeline on a folder that produces review-queue rows (medium/low confidence).
-2. Open UI → **Review** (or edit `review_queue.csv`).
+2. Open UI → **Review** (or edit `00_Admin_and_Index/review_queue.xlsx`).
 3. Set **Corrected folder** for one or more rows.
 4. **Save review queue** (close CSV in Excel first if open).
 5. **Rerun with corrections**.
@@ -115,8 +115,8 @@ Use a folder with intentional duplicate pairs (same file copied, or identical co
 | Check | Expected |
 |-------|----------|
 | Rerun time | Seconds (no re-OCR) |
-| `run_summary.json` | `"rerun": true`, `corrections_applied` > 0 |
-| `manifest.csv` | Corrected rows → `manual_correction`, `needs_review` false |
+| `run_summary.json` | Output root | `"rerun": true`, `corrections_applied` > 0 |
+| `manifest.xlsx` | `00_Admin_and_Index/` | Corrected rows → `manual_correction`, `needs_review` false |
 | Review queue count | Drops for corrected rows |
 | New copies | Appear in corrected taxonomy folders |
 
@@ -130,7 +130,7 @@ Use a folder with intentional duplicate pairs (same file copied, or identical co
 |-----|-------|
 | **Taxonomy** | Categories 00–19 listed with keyword counts |
 | **Doctor** | Run doctor → formatted report; pass/fail banner |
-| **Outputs** | Run summary (expanded), manifest preview columns, processing log metrics, admin mirror file list, artifact table including `classification_log.csv` and `processing_log.json`, HTML index path |
+| **Outputs** | Run summary (expanded), manifest preview columns, processing log metrics, admin mirror file list (no `run_summary.json` in folder 00), artifact table, HTML index path |
 
 ---
 
@@ -159,7 +159,7 @@ Key unit suites for acceptance gaps:
 | `tests/test_manifest_enrichment.py` | Manifest duplicate/snippet columns |
 | `tests/test_duplicate_review.py` | Duplicate pairs flagged for review |
 | `tests/test_classification_log.py` | Classification + processing logs |
-| `tests/test_admin_outputs.py` | Admin mirror to `00_Admin_and_Index` |
+| `tests/test_admin_outputs.py` | Admin deliverables under `00_Admin_and_Index` (no `run_summary.json` copy) |
 | `tests/test_naming.py` | Standardized rename tokens |
 | `tests/test_html_index.py` | HTML snippet/duplicate/review filters |
 
@@ -171,7 +171,7 @@ Key unit suites for acceptance gaps:
 |----------|-------------|
 | Ollama picks differ between runs | Tier 3 LLM is non-deterministic; edge-case files may move in/out of review queue |
 | Re-run on same output stacks `_2`, `_3` copies | Organizer avoids overwrite; use fresh output folder for clean demos |
-| `review_queue.csv` save fails | File open in Excel — close it and retry |
+| `review_queue.xlsx` save fails | File open in Excel — close it and retry |
 | Full run always re-ingests | Caches used by **`dataroom rerun`**, not by full `dataroom run` |
 | UI stop slow after run | Streamlit waits for subprocess; second `Ctrl+C` or close terminal if stuck |
 

@@ -16,7 +16,7 @@ Milestone 4 turns the prototype into an **operator-ready** data room tool: riche
 ### Delivered capabilities
 
 1. **Pipeline caches** — `ingestion_cache.json` and `classification_cache.json` persisted per output run
-2. **Duplicate detection** — SHA-256 exact matches + near-text similarity; `duplicate_report.csv`
+2. **Duplicate detection** — SHA-256 exact matches + near-text similarity; `duplicate_report.xlsx` in `00_Admin_and_Index/`
 3. **Excel manifest** — `manifest.xlsx` with extended columns (hash, dates, size)
 4. **HTML index** — searchable static `index.html` with configurable link modes (`original` | `organized` | `relative`)
 5. **Doctor CLI** — `dataroom doctor` environment health checks with fix instructions
@@ -43,7 +43,7 @@ Validated on 19-file sample set with hybrid classification and local Ollama Tier
 |------------|-------------|-------------|
 | Manifest formats | CSV only | CSV + **Excel** |
 | Browse organized files | Folder tree only | **HTML index** with search/filter |
-| Duplicate awareness | None | **duplicate_report.csv** |
+| Duplicate awareness | None | **`duplicate_report.xlsx`** in `00_Admin_and_Index/` |
 | Re-run after manual fixes | Full `dataroom run` (re-OCR) | **`dataroom rerun`** from cache |
 | Environment validation | Manual | **`dataroom doctor`** |
 | Operator interface | CLI only | **Streamlit UI** (optional) |
@@ -56,16 +56,23 @@ Typical full pipeline time on 19 sample files: **~4 minutes** (includes ingestio
 
 ## New outputs
 
-| File | Purpose |
-|------|---------|
-| `manifest.xlsx` | Excel version of manifest for analysts |
-| `index.html` | Static searchable index; open in any browser |
-| `duplicate_report.csv` | Exact and near-duplicate file pairs |
-| `ingestion_cache.json` | Cached ingestion payload for rerun |
-| `classification_cache.json` | Cached classification results for rerun |
-| `run_summary.json` | Extended summary (duplicate count, cache paths, rerun flag) |
+Carl deliverables are written under **`00_Admin_and_Index/`** (folder 00 in the taxonomy). Operational files stay at the **output root**.
 
-Existing outputs from Milestone 3 are unchanged: `manifest.csv`, `review_queue.csv`, `errors_report.csv`, `audit_log.jsonl`.
+| File | Location | Purpose |
+|------|----------|---------|
+| `manifest.xlsx` | `00_Admin_and_Index/` | Excel manifest for analysts |
+| `index.html` | `00_Admin_and_Index/` | Static searchable index; open in any browser |
+| `duplicate_report.xlsx` | `00_Admin_and_Index/` | Exact and near-duplicate file pairs |
+| `review_queue.xlsx` | `00_Admin_and_Index/` | Files flagged for human review |
+| `errors_report.xlsx` | `00_Admin_and_Index/` | Skipped or failed files |
+| `classification_log.xlsx` | `00_Admin_and_Index/` | Per-file classification audit |
+| `processing_log.json` | `00_Admin_and_Index/` | Run metadata and timings |
+| `source_authentication_matrix.xlsx` | `00_Admin_and_Index/` | Source authentication matrix |
+| `ingestion_cache.json` | Output root | Cached ingestion payload for rerun |
+| `classification_cache.json` | Output root | Cached classification results for rerun |
+| `run_summary.json` | Output root only | Extended summary (counts, paths, rerun flag) |
+| `run_progress.json` | Output root | Live UI progress snapshots |
+| `audit_log.jsonl` | Output root | Tier 3 LLM audit trail |
 
 ---
 
@@ -83,7 +90,7 @@ corrections:
 
 output:
   manifest_xlsx_file: manifest.xlsx
-  duplicate_report_file: duplicate_report.csv
+  duplicate_report_file: duplicate_report.xlsx
   index_html_file: index.html
   index_link_mode: original   # original | organized | relative
   persist_ingestion_cache: true
@@ -103,7 +110,7 @@ dataroom download-models
 dataroom doctor
 dataroom doctor --json
 
-# Rerun after editing review_queue.csv (corrected_folder column)
+# Rerun after editing 00_Admin_and_Index/review_queue.xlsx (corrected_folder column)
 dataroom rerun output\data_room
 
 # Launch Streamlit UI (requires pip install -e ".[ui]")
@@ -121,7 +128,7 @@ dataroom run "C:\path\to\master\folder" --output-dir output\data_room
 
 ## Review correction workflow
 
-1. Run pipeline → open `review_queue.csv` or use **Review** tab in UI
+1. Run pipeline → open `00_Admin_and_Index/review_queue.xlsx` or use **Review** tab in UI
 2. Set `corrected_folder` to a valid taxonomy folder name (e.g. `01_Project_Overview`)
 3. Save the CSV (or click **Save review queue** in UI)
 4. Run `dataroom rerun output\data_room` — files move to corrected folders; manifest and index refresh

@@ -85,12 +85,12 @@ dataroom run "C:\Users\user\Desktop\Sample Data" --output-dir output\demo
 
 ## Part 4 — Outputs walkthrough (5 min)
 
-Open `output\demo\`:
+Open `output\demo\00_Admin_and_Index\`:
 
 ### Manifest
 
 ```powershell
-start output\demo\manifest.xlsx
+start output\demo\00_Admin_and_Index\manifest.xlsx
 ```
 
 **Show columns:** file name, assigned folder, confidence, method, reasoning provider, file hash.
@@ -98,7 +98,7 @@ start output\demo\manifest.xlsx
 ### HTML index
 
 ```powershell
-start output\demo\index.html
+start output\demo\00_Admin_and_Index\index.html
 ```
 
 **Demo:** search for a filename; filter by folder; click a link (opens original or organized copy per config).
@@ -106,7 +106,7 @@ start output\demo\index.html
 ### Review queue
 
 ```powershell
-start output\demo\review_queue.csv
+start output\demo\00_Admin_and_Index\review_queue.xlsx
 ```
 
 **Say:** *"Only uncertain files appear here — not the whole batch."*
@@ -114,7 +114,7 @@ start output\demo\review_queue.csv
 ### Duplicates
 
 ```powershell
-start output\demo\duplicate_report.csv
+start output\demo\00_Admin_and_Index\duplicate_report.xlsx
 ```
 
 **Say:** *"Exact hash matches and near-text duplicates are flagged for analyst review."*
@@ -123,7 +123,15 @@ start output\demo\duplicate_report.csv
 
 Browse `output\demo\01_Project_Overview`, etc.
 
-**Optional KMZ story** (if sample includes boundary KMZ): show `manifest.csv` → `extracted_geo_signals` and keyword classification — see `docs/CALIBRATION.md` §4.
+**Optional KMZ story** (if sample includes boundary KMZ): show `manifest.xlsx` → `extracted_geo_signals` and keyword classification — see `docs/CALIBRATION.md` §4.
+
+### Run summary (output root)
+
+```powershell
+type output\demo\run_summary.json
+```
+
+**Say:** *"Operational summary stays at the output root — not duplicated in folder 00."*
 
 ---
 
@@ -139,10 +147,10 @@ Browse `output\demo\01_Project_Overview`, etc.
 
 **CLI path:**
 
-1. Edit `review_queue.csv` — set `corrected_folder`
+1. Edit `00_Admin_and_Index/review_queue.xlsx` — set `corrected_folder`
 2. `dataroom rerun output\demo`
 
-**Show:** rerun completes in seconds; `run_summary.json` has `"rerun": true`; file appears in corrected folder.
+**Show:** rerun completes in seconds; `run_summary.json` (output root) has `"rerun": true`; file appears in corrected folder.
 
 ---
 
@@ -163,7 +171,7 @@ Open `config/default.yaml` — thresholds, guardrails, duplicate settings, `inde
 | Point | Detail |
 |-------|--------|
 | **Local-first** | Ingestion and Tier 2 run on-host; API sends excerpts only |
-| **Auditability** | `manifest.csv`, `audit_log.jsonl`, `errors_report.csv` |
+| **Auditability** | `00_Admin_and_Index/manifest.xlsx`, `audit_log.jsonl`, `errors_report.xlsx` |
 | **Scale** | CLI for large batches; UI for review and ops |
 | **No lock-in** | Taxonomy YAML swappable; OpenAI-compatible enterprise gateway |
 

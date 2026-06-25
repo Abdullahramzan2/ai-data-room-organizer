@@ -235,7 +235,7 @@ flowchart TD
 
 **Runtime** (`classification/runtime.py`): `build_classification_runtime()` wires settings, guardrails, and provider for both `dataroom run` and `dataroom classify`.
 
-**Error reporting** (`export/errors.py`): `errors_report.csv` aggregates ingestion skips/failures and organize failures; `manifest.csv` adds `organize_status` / `organize_error`.
+**Error reporting** (`export/errors.py`): `errors_report.xlsx` aggregates ingestion skips/failures and organize failures; `manifest.xlsx` adds `organize_status` / `organize_error`.
 
 ### Confidence routing
 
@@ -464,7 +464,7 @@ After each `dataroom run`, when `output.persist_ingestion_cache` is true:
 - `ingestion_cache.json` — documents, skipped/failed files, input directory
 - `classification_cache.json` — per-file classification results
 
-`dataroom rerun` loads these caches, applies `corrected_folder` from `review_queue.csv`, re-organizes, and re-exports without re-OCR.
+`dataroom rerun` loads these caches, applies `corrected_folder` from `00_Admin_and_Index/review_queue.xlsx`, re-organizes, and re-exports without re-OCR.
 
 ### Live progress (`pipeline/progress.py`)
 
@@ -480,16 +480,17 @@ The Streamlit UI subprocess polls this file every ~0.5s so operators see progres
 
 - **Exact duplicates** — SHA-256 file hash match within the **same input batch**
 - **Near duplicates** — text similarity above `near_similarity_threshold` (default 0.92)
-- Output: `duplicate_report.csv` with pair metadata
+- Output: `duplicate_report.xlsx` in `00_Admin_and_Index/` with pair metadata
 - Does not delete or merge files; does not compare against files outside the current run input
 
 ### Extended exports (`export/`)
 
 | Module | Output |
 |--------|--------|
-| `manifest_xlsx.py` | `manifest.xlsx` (openpyxl) |
-| `html_index.py` | `index.html` — static page with client-side search/filter |
-| `errors.py` | `errors_report.csv` (M3) |
+| `manifest_xlsx.py` | `00_Admin_and_Index/manifest.xlsx` (openpyxl) |
+| `html_index.py` | `00_Admin_and_Index/index.html` — static page with client-side search/filter |
+| `errors.py` | `00_Admin_and_Index/errors_report.xlsx` (M3) |
+| `admin_outputs.py` | Resolves Carl deliverable paths under folder 00; `run_summary.json` stays at output root only |
 
 `index_link_mode`: `original` (source path), `organized` (output copy), or `relative` (path relative to output dir).
 
@@ -498,7 +499,7 @@ The Streamlit UI subprocess polls this file every ~0.5s so operators see progres
 1. Operator sets `corrected_folder` in review queue
 2. `apply_corrections()` overrides classification rows by `original_path`
 3. `organize_files()` + `export_pipeline_outputs()` refresh all artifacts
-4. `run_summary.json` records `rerun: true` and `corrections_applied`
+4. `run_summary.json` (output root) records `rerun: true` and `corrections_applied`
 
 ### Doctor (`doctor/`)
 

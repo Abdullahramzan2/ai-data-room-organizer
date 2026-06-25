@@ -2,7 +2,6 @@
 
 from dataroom.export.admin_outputs import (
     admin_folder_name,
-    copy_run_summary_to_admin,
     resolve_admin_artifact_paths,
     resolve_artifact_path,
 )
@@ -31,7 +30,6 @@ __all__ = [
     "build_manifest_rows",
     "build_organize_error_rows",
     "build_processing_log",
-    "copy_run_summary_to_admin",
     "resolve_admin_artifact_paths",
     "resolve_artifact_path",
     "write_classification_log",

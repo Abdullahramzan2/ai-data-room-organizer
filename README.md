@@ -50,7 +50,7 @@ dataroom run "C:\path\to\master\folder" --output-dir output\data_room
 # UI — run, review, doctor, outputs (live per-file progress on Run tab)
 dataroom ui
 
-# After editing review_queue.csv (corrected_folder column)
+# After editing review_queue.xlsx in 00_Admin_and_Index (corrected_folder column)
 dataroom rerun output\data_room
 ```
 
@@ -64,7 +64,14 @@ dataroom download-models
 
 ### Pipeline output
 
-Taxonomy subfolders `00`–`19`, plus `manifest.csv`, `manifest.xlsx`, `index.html`, `review_queue.csv`, `duplicate_report.csv`, `errors_report.csv`, `audit_log.jsonl`, `run_summary.json`, `run_progress.json` (live UI progress), and cache files for rerun.
+Taxonomy subfolders `01`–`19` for organized document copies, plus **`00_Admin_and_Index/`** for Carl deliverables:
+
+| Location | Files |
+|----------|--------|
+| `00_Admin_and_Index/` | `manifest.xlsx`, `index.html`, `review_queue.xlsx`, `duplicate_report.xlsx`, `errors_report.xlsx`, `classification_log.xlsx`, `processing_log.json`, `source_authentication_matrix.xlsx` |
+| Output root | `run_summary.json`, `run_progress.json` (live UI), `ingestion_cache.json`, `classification_cache.json`, `audit_log.jsonl` |
+
+Original source files are never modified.
 
 ### Step-by-step (debugging)
 
