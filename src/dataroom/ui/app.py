@@ -38,6 +38,7 @@ from dataroom.ui.progress_display import (
     render_duplicate_pairs_table,
     render_file_results_table,
     reset_live_progress_panel,
+    repaint_run_status,
     update_run_status,
 )
 from dataroom.ui.widgets import folder_path_field
@@ -144,6 +145,7 @@ def _page_run() -> None:
     )
 
     get_run_status_slot()
+    repaint_run_status()
     panel = get_live_progress_panel(output_path)
 
     if run_clicked and not st.session_state.pipeline_running:
@@ -165,6 +167,7 @@ def _page_run() -> None:
             st.rerun()
 
     if st.session_state.pipeline_pending:
+        update_run_status(None, starting=True, force=True)
         st.session_state.pipeline_pending = False
         opts = st.session_state.get("pipeline_run_options", {})
         try:

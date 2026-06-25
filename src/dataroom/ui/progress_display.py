@@ -119,13 +119,27 @@ def update_run_status(
         return
 
     st.session_state["_run_status_message"] = message
+    st.session_state["_run_status_is_error"] = (
+        snapshot is not None and str(snapshot.get("status", "")) == "failed"
+    )
+    _paint_run_status(message)
+
+
+def _paint_run_status(message: str) -> None:
     slot = get_run_status_slot()
     if message == "Pipeline finished.":
         slot.success(message)
-    elif snapshot is not None and str(snapshot.get("status", "")) == "failed":
+    elif st.session_state.get("_run_status_is_error"):
         slot.error(message)
     else:
         slot.info(message)
+
+
+def repaint_run_status() -> None:
+    """Re-draw status after st.rerun (placeholders do not keep their content)."""
+    message = st.session_state.get("_run_status_message", "")
+    if message:
+        _paint_run_status(message)
 
 
 def _panel_session_key(output_path: Path) -> str:
@@ -136,6 +150,7 @@ def reset_live_progress_panel(output_path: Path) -> None:
     st.session_state.pop(_panel_session_key(output_path), None)
     st.session_state.pop("_run_status_slot", None)
     st.session_state.pop("_run_status_message", None)
+    st.session_state.pop("_run_status_is_error", None)
 
 
 def get_live_progress_panel(output_path: Path) -> LiveProgressPanel:

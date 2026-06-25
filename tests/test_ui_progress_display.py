@@ -50,6 +50,17 @@ def test_run_status_message_transitions():
     assert run_status_message({"status": "complete"}) == "Pipeline finished."
 
 
+def test_repaint_run_status_uses_session_message():
+    import streamlit as st
+
+    st.session_state["_run_status_message"] = "Starting the pipeline…"
+    st.session_state["_run_status_is_error"] = False
+    from dataroom.ui.progress_display import repaint_run_status
+
+    repaint_run_status()
+    assert st.session_state["_run_status_message"] == "Starting the pipeline…"
+
+
 def test_live_progress_panel_clear():
     panel = LiveProgressPanel()
     panel.clear()
