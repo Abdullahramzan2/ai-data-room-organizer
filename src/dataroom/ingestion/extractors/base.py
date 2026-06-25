@@ -75,3 +75,24 @@ class BaseExtractor(ABC):
         except Exception as exc:
             doc.errors.append(f"OCR failed: {exc}")
         return doc
+
+
+def append_text_within_budget(existing: str, chunk: str, max_chars: int) -> tuple[str, bool]:
+    """
+    Append ``chunk`` to ``existing`` up to ``max_chars`` total characters.
+
+    Returns ``(text, was_truncated)``.
+    """
+    chunk = chunk.strip()
+    if not chunk:
+        return existing, False
+    if len(existing) >= max_chars:
+        return existing[:max_chars], True
+
+    separator = "\n" if existing else ""
+    room = max_chars - len(existing) - len(separator)
+    if room <= 0:
+        return existing[:max_chars], True
+    if len(chunk) <= room:
+        return f"{existing}{separator}{chunk}", False
+    return f"{existing}{separator}{chunk[:room]}", True

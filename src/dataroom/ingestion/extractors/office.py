@@ -4,33 +4,48 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from dataroom.ingestion.extractors.base import BaseExtractor
+from dataroom.ingestion.extractors.base import BaseExtractor, append_text_within_budget
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConverter
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
 
 
-def read_docx_text(path: Path, max_chars: int) -> str:
+def read_docx_text(path: Path, max_chars: int) -> tuple[str, bool]:
     from docx import Document
 
     document = Document(str(path))
-    paragraphs = [p.text for p in document.paragraphs if p.text.strip()]
-    text = "\n".join(paragraphs)
-    return text[:max_chars]
+    text = ""
+    truncated = False
+    for paragraph in document.paragraphs:
+        if not paragraph.text.strip():
+            continue
+        text, para_truncated = append_text_within_budget(text, paragraph.text, max_chars)
+        if para_truncated:
+            truncated = True
+            break
+    return text, truncated
 
 
-def read_pptx_text(path: Path, max_chars: int) -> tuple[str, int | None]:
+def read_pptx_text(path: Path, max_chars: int) -> tuple[str, int | None, bool]:
     from pptx import Presentation
 
     prs = Presentation(str(path))
-    lines: list[str] = []
+    text = ""
+    truncated = False
     for idx, slide in enumerate(prs.slides, start=1):
-        lines.append(f"## Slide {idx}")
+        text, slide_truncated = append_text_within_budget(text, f"## Slide {idx}", max_chars)
+        if slide_truncated:
+            truncated = True
+            break
         for shape in slide.shapes:
             shape_text = getattr(shape, "text", "")
             if isinstance(shape_text, str) and shape_text.strip():
-                lines.append(shape_text)
-    text = "\n".join(lines)
-    return text[:max_chars], len(prs.slides)
+                text, shape_truncated = append_text_within_budget(text, shape_text, max_chars)
+                if shape_truncated:
+                    truncated = True
+                    break
+        if truncated:
+            break
+    return text, len(prs.slides), truncated
 
 
 class DocxExtractor(BaseExtractor):
@@ -39,7 +54,12 @@ class DocxExtractor(BaseExtractor):
     def extract(self, path: Path, metadata: FileMetadata) -> ExtractedDocument:
         doc = ExtractedDocument(metadata=metadata, extraction_method=ExtractionMethod.NATIVE)
         try:
-            doc.text_content = read_docx_text(path, self.max_text_chars)
+            text, truncated = read_docx_text(path, self.max_text_chars)
+            doc.text_content = text
+            if truncated:
+                doc.warnings.append(
+                    f"Large document — only the first {self.max_text_chars:,} characters were loaded"
+                )
         except Exception as exc:
             doc.errors.append(f"DOCX extraction failed: {exc}")
             doc.extraction_method = ExtractionMethod.FAILED
@@ -125,6 +145,8 @@ class XlsExtractor(BaseExtractor):
 
             book = xlrd.open_workbook(str(path))
             lines: list[str] = []
+            char_budget = self.max_text_chars
+            truncated = False
             for sheet in book.sheets():
                 lines.append(f"## Sheet: {sheet.name}")
                 for row_idx in range(sheet.nrows):
@@ -134,7 +156,16 @@ class XlsExtractor(BaseExtractor):
                         if str(sheet.cell_value(row_idx, col_idx)).strip()
                     ]
                     if cells:
-                        lines.append("\t".join(cells))
+                        line = "\t".join(cells)
+                        if len("\n".join(lines)) + len(line) > char_budget:
+                            doc.warnings.append(
+                                f"Large spreadsheet — only the first {char_budget:,} characters were loaded"
+                            )
+                            truncated = True
+                            break
+                        lines.append(line)
+                if truncated or len("\n".join(lines)) >= char_budget:
+                    break
             doc.text_content = self._truncate("\n".join(lines))
         except Exception as exc:
             doc.errors.append(f"XLS extraction failed: {exc}")
@@ -148,9 +179,13 @@ class PptxExtractor(BaseExtractor):
     def extract(self, path: Path, metadata: FileMetadata) -> ExtractedDocument:
         doc = ExtractedDocument(metadata=metadata, extraction_method=ExtractionMethod.NATIVE)
         try:
-            text, page_count = read_pptx_text(path, self.max_text_chars)
+            text, page_count, truncated = read_pptx_text(path, self.max_text_chars)
             doc.text_content = text
             doc.metadata.page_count = page_count
+            if truncated:
+                doc.warnings.append(
+                    f"Large presentation — only the first {self.max_text_chars:,} characters were loaded"
+                )
         except Exception as exc:
             doc.errors.append(f"PPTX extraction failed: {exc}")
             doc.extraction_method = ExtractionMethod.FAILED

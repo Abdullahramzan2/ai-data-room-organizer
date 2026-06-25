@@ -31,7 +31,7 @@ ocr:
   # Minimum native text chars before OCR is triggered on PDFs/images
   min_native_text_chars: 50
   # Cap OCR on very large scanned PDFs (0 = OCR every page)
-  max_pdf_ocr_pages: 200
+  max_pdf_ocr_pages: 10
   # Tesseract language(s); install data packs as needed
   language: eng
   # DPI for rendering PDF pages before OCR
@@ -42,8 +42,8 @@ ocr:
   poppler_path: null
 
 ingestion:
-  # Max characters stored per document (downstream classification uses excerpts)
-  max_text_chars: 2000000
+  # Max characters stored per document (extractors stop early at this limit)
+  max_text_chars: 100000
   # Skip files larger than this (bytes); 0 = no limit
   max_file_size_bytes: 0
 

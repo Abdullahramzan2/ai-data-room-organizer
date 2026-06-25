@@ -81,7 +81,7 @@ class LegacyOfficeConverter:
             converted = self._convert_via_libreoffice(path, "docx", tmp_dir)
             if converted:
                 attempts.append("libreoffice_docx")
-                text = read_docx_text(converted, max_chars)
+                text, _truncated = read_docx_text(converted, max_chars)
                 if text.strip():
                     result.text = text
                     result.method = "libreoffice_docx"
@@ -92,7 +92,7 @@ class LegacyOfficeConverter:
                 converted = self._convert_via_com(path, "docx", tmp_dir)
                 if converted:
                     attempts.append("word_com_docx")
-                    text = read_docx_text(converted, max_chars)
+                    text, _truncated = read_docx_text(converted, max_chars)
                     if text.strip():
                         result.text = text
                         result.method = "word_com_docx"
@@ -135,7 +135,7 @@ class LegacyOfficeConverter:
             converted = self._convert_via_libreoffice(path, "pptx", tmp_dir)
             if converted:
                 attempts.append("libreoffice_pptx")
-                text, page_count = read_pptx_text(converted, max_chars)
+                text, page_count, _truncated = read_pptx_text(converted, max_chars)
                 if text.strip():
                     result.text = text
                     result.page_count = page_count
@@ -147,7 +147,7 @@ class LegacyOfficeConverter:
                 converted = self._convert_via_com(path, "pptx", tmp_dir)
                 if converted:
                     attempts.append("powerpoint_com_pptx")
-                    text, page_count = read_pptx_text(converted, max_chars)
+                    text, page_count, _truncated = read_pptx_text(converted, max_chars)
                     if text.strip():
                         result.text = text
                         result.page_count = page_count

@@ -213,7 +213,8 @@ class LiveProgressPanel:
     def _files_key(self, snapshot: dict[str, Any]) -> str:
         files = snapshot.get("files") or []
         return "|".join(
-            f"{row.get('file_name')}:{row.get('status')}:{row.get('category_folder')}:{row.get('confidence')}"
+            f"{row.get('file_name')}:{row.get('status')}:{row.get('category_folder')}:"
+            f"{row.get('confidence')}:{row.get('needs_review')}"
             for row in files
         )
 
@@ -239,7 +240,7 @@ class LiveProgressPanel:
         if force or metrics_key != self._last_metrics_key:
             self._last_metrics_key = metrics_key
             with self._metrics.container():
-                if status == "running":
+                if total > 0 and status in {"running", "complete", "failed"}:
                     c1, c2, c3, c4, c5 = st.columns(5)
                     c1.metric("Total files", total)
                     c2.metric("Classified", classified)
@@ -251,11 +252,17 @@ class LiveProgressPanel:
         if force or progress_key != self._last_progress_key:
             self._last_progress_key = progress_key
             with self._progress.container():
-                if status == "running" and total > 0:
+                if total > 0 and status == "running":
                     st.progress(
                         min(1.0, classified / total),
                         text=f"Classified {classified} of {total}",
                     )
+                elif total > 0 and status in {"complete", "failed"}:
+                    if failed:
+                        label = f"Finished — {classified} classified, {failed} failed ({total} total)"
+                    else:
+                        label = f"Finished — {classified} of {total} classified"
+                    st.progress(1.0, text=label)
 
         files_key = self._files_key(snapshot)
         if force or files_key != self._last_files_key:

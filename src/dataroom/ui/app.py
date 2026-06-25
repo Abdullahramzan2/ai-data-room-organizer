@@ -90,10 +90,13 @@ def _review_queue_summary_lines(rows: list[dict[str, str]]) -> list[str]:
     duplicate = 0
     low_confidence = 0
     medium_confidence = 0
+    ingestion_failed = 0
     other = 0
     for row in rows:
         reason = str(row.get("review_reason", "")).lower()
-        if "duplicate" in reason:
+        if reason.startswith("ingestion failed"):
+            ingestion_failed += 1
+        elif "duplicate" in reason:
             duplicate += 1
         elif reason.startswith("low confidence") or "low confidence (" in reason:
             low_confidence += 1
@@ -103,6 +106,8 @@ def _review_queue_summary_lines(rows: list[dict[str, str]]) -> list[str]:
             other += 1
 
     lines = [f"{total} file(s) in the review queue."]
+    if ingestion_failed:
+        lines.append(f"{ingestion_failed} flagged for ingestion failure.")
     if duplicate:
         lines.append(f"{duplicate} flagged for duplicate review.")
     if low_confidence:
@@ -187,12 +192,21 @@ def _page_run() -> None:
                 on_progress=on_progress,
             )
             st.session_state.pop("run_page_error", None)
+            final_progress = load_pipeline_progress(output_path, config)
+            if final_progress:
+                update_run_status(final_progress, force=True)
+                panel.update(final_progress, force=True)
         except PipelineSubprocessError as exc:
             st.session_state["run_page_error"] = str(exc)
+            final_progress = load_pipeline_progress(output_path, config)
+            if final_progress:
+                update_run_status(final_progress, force=True)
+                panel.update(final_progress, force=True)
         except Exception as exc:
             st.session_state["run_page_error"] = f"Pipeline failed: {exc}"
         finally:
             st.session_state.pipeline_running = False
+            st.rerun()
 
     if st.session_state.get("run_page_error"):
         st.error(st.session_state["run_page_error"])

@@ -270,8 +270,10 @@ class RunProgressTracker:
             self._order.append(key)
         row.status = "failed"
         row.error = error
+        row.needs_review = True
         self.failed_count = sum(1 for f in self.files.values() if f.status == "failed")
-        self.flush()
+        self.review_queue_count = sum(1 for f in self.files.values() if f.needs_review)
+        self.flush(force=True)
 
     def set_duplicate_pairs(self, pairs: list[dict[str, str]]) -> None:
         self.duplicate_pairs = list(pairs)

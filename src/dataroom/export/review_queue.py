@@ -5,6 +5,8 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+DEFAULT_REVIEW_FOLDER = "19_Unclassified_Review_Queue"
+
 from dataroom.export.xlsx_io import (
     cell_str,
     normalize_rows,
@@ -29,7 +31,36 @@ class ReviewQueueWriteError(OSError):
     """Raised when review_queue.xlsx cannot be written (e.g. file locked on Windows)."""
 
 
-def build_review_rows(manifest_rows: list[dict[str, str]]) -> list[dict[str, str]]:
+def build_ingestion_failed_review_rows(
+    failed_files: list[tuple[Path, str]],
+    *,
+    review_folder: str = DEFAULT_REVIEW_FOLDER,
+) -> list[dict[str, str]]:
+    """Build review-queue rows for files that failed during ingestion."""
+    rows: list[dict[str, str]] = []
+    for path, reason in failed_files:
+        rows.append(
+            {
+                "file_name": path.name,
+                "original_path": str(path),
+                "assigned_folder": review_folder,
+                "confidence": "failed",
+                "score": "",
+                "review_reason": f"Ingestion failed: {reason}",
+                "classification_reason": "",
+                "supporting_terms": "",
+                "corrected_folder": "",
+            }
+        )
+    return rows
+
+
+def build_review_rows(
+    manifest_rows: list[dict[str, str]],
+    *,
+    failed_files: list[tuple[Path, str]] | None = None,
+    review_folder: str = DEFAULT_REVIEW_FOLDER,
+) -> list[dict[str, str]]:
     review: list[dict[str, str]] = []
     for row in manifest_rows:
         if row.get("needs_review") != "true":
@@ -47,11 +78,28 @@ def build_review_rows(manifest_rows: list[dict[str, str]]) -> list[dict[str, str
                 "corrected_folder": row.get("corrected_folder", ""),
             }
         )
+    if failed_files:
+        review.extend(
+            build_ingestion_failed_review_rows(failed_files, review_folder=review_folder)
+        )
     return review
 
 
-def write_review_queue(path: Path, manifest_rows: list[dict[str, str]]) -> None:
-    write_review_queue_rows(path, build_review_rows(manifest_rows))
+def write_review_queue(
+    path: Path,
+    manifest_rows: list[dict[str, str]],
+    *,
+    failed_files: list[tuple[Path, str]] | None = None,
+    review_folder: str = DEFAULT_REVIEW_FOLDER,
+) -> None:
+    write_review_queue_rows(
+        path,
+        build_review_rows(
+            manifest_rows,
+            failed_files=failed_files,
+            review_folder=review_folder,
+        ),
+    )
 
 
 def read_review_queue(path: Path) -> list[dict[str, str]]:

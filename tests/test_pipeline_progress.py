@@ -52,6 +52,20 @@ def test_progress_tracker_atomic_flush(tmp_path: Path):
     assert loaded["files"][0]["category_folder"] == "01_Project_Overview"
 
 
+def test_file_failed_counts_toward_review_queue(tmp_path: Path):
+    tracker = RunProgressTracker.start(tmp_path / "out", input_dir=tmp_path / "in")
+    bad = tmp_path / "in" / "bad.pdf"
+    tracker.register_files([bad])
+    tracker.file_failed(bad, "parse error")
+
+    assert tracker.failed_count == 1
+    assert tracker.review_queue_count == 1
+    loaded = load_run_progress(tracker.path)
+    assert loaded is not None
+    assert loaded["files"][0]["needs_review"] is True
+    assert loaded["files"][0]["status"] == "failed"
+
+
 def test_progress_flush_retries_on_lock(tmp_path: Path, monkeypatch):
     tracker = RunProgressTracker.start(tmp_path / "out", input_dir=tmp_path / "in")
     tracker.register_files([tmp_path / "in" / "a.txt"])

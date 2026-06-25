@@ -90,7 +90,7 @@ def export_pipeline_outputs(
     )
 
     write_manifest_xlsx(manifest_path, manifest_rows)
-    write_review_queue(review_path, manifest_rows)
+    write_review_queue(review_path, manifest_rows, failed_files=failed_files)
     write_duplicate_report(duplicate_path, duplicate_pairs)
     write_html_index(
         index_html_path,
@@ -129,7 +129,9 @@ def export_pipeline_outputs(
         )
 
     api_used_count = sum(1 for r in classification_results if r.get("api_used"))
-    review_count = sum(1 for r in manifest_rows if r.get("needs_review") == "true")
+    review_count = sum(1 for r in manifest_rows if r.get("needs_review") == "true") + len(
+        failed_files
+    )
     organized_success = sum(1 for r in organized if r.success)
     ingestion_cache_path = output_dir / output_cfg.get(
         "ingestion_cache_file", "ingestion_cache.json"

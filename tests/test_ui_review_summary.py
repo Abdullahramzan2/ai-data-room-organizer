@@ -21,6 +21,18 @@ def test_review_summary_all_flag_types():
     assert "1 flagged for other review reasons." in text
 
 
+def test_review_summary_ingestion_failed():
+    rows = [
+        {"review_reason": "Ingestion failed: parse error"},
+        {"review_reason": "Low confidence (0.42): weak embedding match"},
+    ]
+    lines = _review_queue_summary_lines(rows)
+    text = "\n".join(lines)
+    assert "2 file(s) in the review queue." in text
+    assert "1 flagged for ingestion failure." in text
+    assert "1 flagged for low confidence." in text
+
+
 def test_review_summary_duplicate_only():
     rows = [
         {"review_reason": "Duplicate: near duplicate"},
