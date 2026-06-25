@@ -64,14 +64,14 @@ Open the output folder:
 | `duplicate_report.xlsx` | `00_Admin_and_Index/` | Exact and near-duplicate pairs |
 | `errors_report.xlsx` | `00_Admin_and_Index/` | Skipped or failed files |
 | `classification_log.xlsx` | `00_Admin_and_Index/` | Per-file classification audit trail |
-| `processing_log.json` | `00_Admin_and_Index/` | Run metadata, counts, and timings |
+| `processing_log.json` | Output root | Run metadata, counts, and timings |
 | `source_authentication_matrix.xlsx` | `00_Admin_and_Index/` | Source authentication matrix |
 | `audit_log.jsonl` | Output root | Tier 3 LLM escalation decisions (API/guardrails only) |
 | `ingestion_cache.json` / `classification_cache.json` | Output root | Rerun caches (used by `dataroom rerun`) |
 
 Organized document copies live in taxonomy subfolders `01_…` through `19_…` under the output directory.
 
-**Admin folder (`00_Admin_and_Index/`):** Carl-spec deliverables (manifest, index, review queue, duplicates, errors, classification log, processing log, source auth matrix). Operational files (`run_summary.json`, caches, `run_progress.json`, `audit_log.jsonl`) stay at the **output root only**.
+**Admin folder (`00_Admin_and_Index/`):** Carl-spec deliverables (manifest, index, review queue, duplicates, errors, classification log, source auth matrix). Operational files (`run_summary.json`, `processing_log.json`, caches, `run_progress.json`, `audit_log.jsonl`) stay at the **output root only**.
 
 ---
 

@@ -68,8 +68,8 @@ Taxonomy subfolders `01`–`19` for organized document copies, plus **`00_Admin_
 
 | Location | Files |
 |----------|--------|
-| `00_Admin_and_Index/` | `manifest.xlsx`, `index.html`, `review_queue.xlsx`, `duplicate_report.xlsx`, `errors_report.xlsx`, `classification_log.xlsx`, `processing_log.json`, `source_authentication_matrix.xlsx` |
-| Output root | `run_summary.json`, `run_progress.json` (live UI), `ingestion_cache.json`, `classification_cache.json`, `audit_log.jsonl` |
+| `00_Admin_and_Index/` | `manifest.xlsx`, `index.html`, `review_queue.xlsx`, `duplicate_report.xlsx`, `errors_report.xlsx`, `classification_log.xlsx`, `source_authentication_matrix.xlsx` |
+| Output root | `run_summary.json`, `processing_log.json`, `run_progress.json` (live UI), `ingestion_cache.json`, `classification_cache.json`, `audit_log.jsonl` |
 
 Original source files are never modified.
 

@@ -30,7 +30,7 @@ from dataroom.doctor.checks import format_doctor_report
 from dataroom.ingestion.extractors.legacy_office import LegacyOfficeConfig
 from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
 from dataroom.ingestion.pipeline import run_ingestion
-from dataroom.ocr.tesseract import OcrConfig
+from dataroom.ocr.tesseract import OcrConfig, ocr_config_from_app
 
 
 @click.group()
@@ -67,19 +67,22 @@ def ingest_cmd(
     """Scan a folder and extract text/metadata from supported files."""
     config = load_app_config(config_path)
     input_cfg = config.get("input", {})
-    ocr_cfg = config.get("ocr", {})
     ingest_cfg = config.get("ingestion", {})
     legacy_cfg = config.get("legacy_office", {})
 
-    ocr_config = OcrConfig(
-        enabled=not no_ocr and ocr_cfg.get("enabled", True),
-        language=ocr_cfg.get("language", "eng"),
-        pdf_dpi=ocr_cfg.get("pdf_dpi", 300),
-        min_native_text_chars=ocr_cfg.get("min_native_text_chars", 50),
-        max_pdf_ocr_pages=int(ocr_cfg.get("max_pdf_ocr_pages", 200)),
-        tesseract_cmd=ocr_cfg.get("tesseract_cmd"),
-        poppler_path=ocr_cfg.get("poppler_path"),
-    )
+    ocr_config = ocr_config_from_app(config)
+    if no_ocr:
+        ocr_config = OcrConfig(
+            enabled=False,
+            language=ocr_config.language,
+            pdf_dpi=ocr_config.pdf_dpi,
+            min_native_text_chars=ocr_config.min_native_text_chars,
+            max_pdf_ocr_pages=ocr_config.max_pdf_ocr_pages,
+            classification_pdf_dpi=ocr_config.classification_pdf_dpi,
+            classification_pdf_ocr_pages=ocr_config.classification_pdf_ocr_pages,
+            tesseract_cmd=ocr_config.tesseract_cmd,
+            poppler_path=ocr_config.poppler_path,
+        )
     legacy_office_config = LegacyOfficeConfig(
         libreoffice_cmd=legacy_cfg.get("libreoffice_cmd"),
         enable_com=legacy_cfg.get("enable_com", True),

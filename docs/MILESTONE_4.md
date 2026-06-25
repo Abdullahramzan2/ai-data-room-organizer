@@ -66,7 +66,7 @@ Carl deliverables are written under **`00_Admin_and_Index/`** (folder 00 in the 
 | `review_queue.xlsx` | `00_Admin_and_Index/` | Files flagged for human review |
 | `errors_report.xlsx` | `00_Admin_and_Index/` | Skipped or failed files |
 | `classification_log.xlsx` | `00_Admin_and_Index/` | Per-file classification audit |
-| `processing_log.json` | `00_Admin_and_Index/` | Run metadata and timings |
+| `processing_log.json` | Output root | Run metadata and timings |
 | `source_authentication_matrix.xlsx` | `00_Admin_and_Index/` | Source authentication matrix |
 | `ingestion_cache.json` | Output root | Cached ingestion payload for rerun |
 | `classification_cache.json` | Output root | Cached classification results for rerun |

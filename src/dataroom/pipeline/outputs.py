@@ -175,16 +175,18 @@ def finalize_run_exports(
     *,
     run_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Write processing_log.json to folder 00 (run_summary stays at output root only)."""
+    """Write processing_log.json at output root (Carl deliverables stay in folder 00)."""
     admin_paths = resolve_admin_artifact_paths(output_dir, config)
-    processing_log_path = admin_paths.processing_log
+    output_cfg = config.get("output", {}) or {}
+    processing_log_path = output_dir / str(
+        output_cfg.get("processing_log_file", "processing_log.json")
+    )
     ctx = dict(run_context or {})
     ctx.setdefault("finished_at", utc_now_iso())
 
     payload = build_processing_log(summary=summary, run_context=ctx)
     write_processing_log(processing_log_path, payload)
     summary["processing_log"] = str(processing_log_path)
-    _maybe_copy_to_root(processing_log_path, output_dir, config)
 
     summary["admin_folder"] = str(admin_paths.admin_dir)
     summary["admin_artifact_count"] = sum(

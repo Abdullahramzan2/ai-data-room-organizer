@@ -27,10 +27,11 @@ def test_run_pipeline(tmp_path: Path):
     assert (admin / "errors_report.xlsx").is_file()
     assert (admin / "duplicate_report.xlsx").is_file()
     assert (admin / "classification_log.xlsx").is_file()
-    assert (admin / "processing_log.json").is_file()
     assert (admin / "source_authentication_matrix.xlsx").is_file()
     assert not (admin / "run_summary.json").is_file()
+    assert not (admin / "processing_log.json").is_file()
     assert (output_dir / "run_summary.json").is_file()
+    assert (output_dir / "processing_log.json").is_file()
     assert (output_dir / "ingestion_cache.json").is_file()
     assert (output_dir / "classification_cache.json").is_file()
     assert (input_dir / "PSA_agreement.txt").is_file()
@@ -51,7 +52,8 @@ def test_run_pipeline(tmp_path: Path):
     assert ADMIN in summary["index_html"]
     assert summary["duplicate_pair_count"] == 0
     assert ADMIN in summary["classification_log"]
-    assert ADMIN in summary["processing_log"]
-    assert ADMIN in summary["source_auth_matrix"]
+    assert str(output_dir) in summary["processing_log"]
+    assert ADMIN not in summary["processing_log"]
+    assert summary["source_auth_matrix"]
     assert summary["admin_folder"].endswith(ADMIN)
     assert summary["admin_artifact_count"] > 0

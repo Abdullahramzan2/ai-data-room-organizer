@@ -27,8 +27,8 @@ dataroom run "C:\path\to\sample\folder" --output-dir output\qa_full
 | Exit code | 0 |
 | `run_summary.json` | Output root only | `processed` > 0, paths set |
 | Taxonomy folders | `01_…`–`19_…` | Organized document copies |
-| Admin folder (`00_Admin_and_Index/`) | Carl deliverables | `manifest.xlsx`, `index.html`, `review_queue.xlsx`, `duplicate_report.xlsx`, `errors_report.xlsx`, `classification_log.xlsx`, `processing_log.json`, `source_authentication_matrix.xlsx` |
-| Operational artifacts | Output root | `run_summary.json`, `run_progress.json`, `ingestion_cache.json`, `classification_cache.json`, `audit_log.jsonl` |
+| Admin folder (`00_Admin_and_Index/`) | Carl deliverables | `manifest.xlsx`, `index.html`, `review_queue.xlsx`, `duplicate_report.xlsx`, `errors_report.xlsx`, `classification_log.xlsx`, `source_authentication_matrix.xlsx` |
+| Operational artifacts | Output root | `run_summary.json`, `processing_log.json`, `run_progress.json`, `ingestion_cache.json`, `classification_cache.json`, `audit_log.jsonl` |
 | Admin folder | No duplicate of `run_summary.json` | Summary exists only at output root |
 | Originals | Source folder unchanged |
 

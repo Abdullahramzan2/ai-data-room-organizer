@@ -14,7 +14,6 @@ ADMIN_ARTIFACT_KEYS = (
     "errors_report",
     "index_html",
     "classification_log",
-    "processing_log",
     "source_auth_matrix",
 )
 
@@ -28,7 +27,6 @@ class AdminArtifactPaths:
     errors_report: Path
     index_html: Path
     classification_log: Path
-    processing_log: Path
     source_auth_matrix: Path
 
     def as_dict(self) -> dict[str, Path]:
@@ -39,7 +37,6 @@ class AdminArtifactPaths:
             "errors_report": self.errors_report,
             "index_html": self.index_html,
             "classification_log": self.classification_log,
-            "processing_log": self.processing_log,
             "source_auth_matrix": self.source_auth_matrix,
         }
 
@@ -71,11 +68,15 @@ def resolve_admin_artifact_paths(output_dir: Path, config: dict[str, Any]) -> Ad
         classification_log=admin_dir / str(
             output_cfg.get("classification_log_file", "classification_log.xlsx")
         ),
-        processing_log=admin_dir / str(output_cfg.get("processing_log_file", "processing_log.json")),
         source_auth_matrix=admin_dir / str(
             output_cfg.get("source_auth_matrix_file", "source_authentication_matrix.xlsx")
         ),
     )
+
+
+def operational_artifact_path(output_dir: Path, config: dict[str, Any], filename: str) -> Path:
+    """Paths for operational artifacts that live at the output root only."""
+    return output_dir / filename
 
 
 def resolve_artifact_path(
@@ -89,10 +90,10 @@ def resolve_artifact_path(
     """
     Locate an artifact for UI/CLI: summary path → admin folder 00 → legacy output root.
 
-    ``run_summary.json`` always resolves to the output root (never folder 00).
+    ``run_summary.json`` and ``processing_log.json`` always resolve to the output root.
     """
-    if default_name == "run_summary.json":
-        root_path = output_dir / "run_summary.json"
+    if default_name in {"run_summary.json", "processing_log.json"}:
+        root_path = output_dir / default_name
         if root_path.is_file():
             return root_path
         if summary_key and summary and summary.get(summary_key):

@@ -32,6 +32,9 @@ ocr:
   min_native_text_chars: 50
   # Cap OCR on very large scanned PDFs (0 = OCR every page)
   max_pdf_ocr_pages: 10
+  # Fast classification OCR for image-only PDFs (pages rendered + OCR'd)
+  classification_pdf_ocr_pages: 2
+  classification_pdf_dpi: 150
   # Tesseract language(s); install data packs as needed
   language: eng
   # DPI for rendering PDF pages before OCR
@@ -143,7 +146,7 @@ output:
   admin_folder: "00_Admin_and_Index"
   source_auth_matrix_file: source_authentication_matrix.xlsx
   # When false (default), Carl admin deliverables live only under 00_Admin_and_Index.
-  # run_summary.json always stays at the output root (never copied into folder 00).
+  # run_summary.json and processing_log.json always stay at the output root.
   keep_admin_artifacts_at_root: false
 
 pipeline:

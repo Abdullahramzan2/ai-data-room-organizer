@@ -135,7 +135,7 @@ def test_export_pipeline_writes_classification_log(tmp_path: Path):
     assert rows[0]["file_name"] == "doc.txt"
 
 
-def test_finalize_run_exports_writes_processing_log_to_admin(tmp_path: Path):
+def test_finalize_run_exports_writes_processing_log_to_root(tmp_path: Path):
     output_dir = tmp_path / "out"
     admin_dir = output_dir / "00_Admin_and_Index"
     admin_dir.mkdir(parents=True)
@@ -177,11 +177,10 @@ def test_finalize_run_exports_writes_processing_log_to_admin(tmp_path: Path):
         run_context={"started_at": "2026-06-11T12:00:00+00:00"},
     )
 
-    assert (admin_dir / "processing_log.json").is_file()
-    assert not (admin_dir / "run_summary.json").is_file()
+    assert (output_dir / "processing_log.json").is_file()
+    assert not (admin_dir / "processing_log.json").is_file()
     assert (output_dir / "run_summary.json").is_file()
     assert result["admin_artifact_count"] >= 5
-    assert not (output_dir / "processing_log.json").is_file()
 
-    payload = json.loads((admin_dir / "processing_log.json").read_text(encoding="utf-8"))
+    payload = json.loads((output_dir / "processing_log.json").read_text(encoding="utf-8"))
     assert payload["counts"]["processed"] == 1

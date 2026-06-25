@@ -117,7 +117,6 @@ def list_output_artifacts(
             "index_html",
             "errors_report",
             "classification_log",
-            "processing_log",
             "source_auth_matrix",
         }:
             path = resolve_artifact_path(
@@ -129,6 +128,14 @@ def list_output_artifacts(
             )
         elif summary and summary_key and summary.get(summary_key):
             path = Path(str(summary[summary_key]))
+        elif label in {"processing_log.json", "run_summary.json", "run_progress.json"}:
+            path = resolve_artifact_path(
+                output_dir,
+                config,
+                summary_key=summary_key,
+                default_name=str(default_name),
+                summary=summary,
+            )
         elif label == "audit_log.jsonl":
             path = output_dir / "audit_log.jsonl"
         else:

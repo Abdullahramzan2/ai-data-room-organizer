@@ -19,8 +19,26 @@ class OcrConfig:
     pdf_dpi: int = 300
     min_native_text_chars: int = 50
     max_pdf_ocr_pages: int = 200
+    classification_pdf_dpi: int = 150
+    classification_pdf_ocr_pages: int = 2
     tesseract_cmd: str | None = None
     poppler_path: str | None = None
+
+
+def ocr_config_from_app(config: dict) -> OcrConfig:
+    """Build ``OcrConfig`` from ``config/default.yaml`` ocr section."""
+    ocr_cfg = config.get("ocr", {}) or {}
+    return OcrConfig(
+        enabled=ocr_cfg.get("enabled", True),
+        language=ocr_cfg.get("language", "eng"),
+        pdf_dpi=int(ocr_cfg.get("pdf_dpi", 300)),
+        min_native_text_chars=int(ocr_cfg.get("min_native_text_chars", 50)),
+        max_pdf_ocr_pages=int(ocr_cfg.get("max_pdf_ocr_pages", 200)),
+        classification_pdf_dpi=int(ocr_cfg.get("classification_pdf_dpi", 150)),
+        classification_pdf_ocr_pages=int(ocr_cfg.get("classification_pdf_ocr_pages", 2)),
+        tesseract_cmd=ocr_cfg.get("tesseract_cmd"),
+        poppler_path=ocr_cfg.get("poppler_path"),
+    )
 
 
 _TESSERACT_WINDOWS_PATHS = (
@@ -118,11 +136,18 @@ class TesseractOcr:
                 img = img.convert("RGB")
             return self.ocr_image(img)
 
-    def ocr_pdf(self, path: Path) -> tuple[str, int]:
+    def ocr_pdf(
+        self,
+        path: Path,
+        *,
+        dpi: int | None = None,
+        max_pages: int | None = None,
+    ) -> tuple[str, int]:
         """
-        OCR each page of a PDF. Returns combined text and page count.
+        OCR a bounded page range of a PDF. Returns combined text and total page count.
 
-        Requires pdf2image and a Poppler installation on the system PATH.
+        Only pages 1..N are rendered (via Poppler ``first_page`` / ``last_page``).
+        Requires pdf2image and Poppler on PATH.
         """
         if not self.is_available():
             raise RuntimeError("Tesseract OCR is not available on this system")
@@ -132,8 +157,21 @@ class TesseractOcr:
         except ImportError as exc:
             raise RuntimeError("pdf2image is required for PDF OCR") from exc
 
+        from dataroom.ocr.pdf_pages import pdf_page_count
+
+        total_pages = pdf_page_count(path)
+        render_dpi = dpi if dpi is not None else self.config.pdf_dpi
+        page_limit = max_pages if max_pages is not None else self.config.max_pdf_ocr_pages
+        last_page = total_pages
+        if page_limit > 0:
+            last_page = min(total_pages, page_limit)
+
         poppler_path = resolve_poppler_path(self.config.poppler_path)
-        kwargs: dict = {"dpi": self.config.pdf_dpi}
+        kwargs: dict = {
+            "dpi": render_dpi,
+            "first_page": 1,
+            "last_page": last_page,
+        }
         if poppler_path:
             kwargs["poppler_path"] = poppler_path
 
@@ -145,14 +183,17 @@ class TesseractOcr:
             )
             raise RuntimeError(f"PDF to image conversion failed: {exc}. {hint}") from exc
 
-        self.pdf_ocr_page_limit_hit = False
-        total_pages = len(pages)
-        limit = self.config.max_pdf_ocr_pages
-        if limit > 0 and total_pages > limit:
-            pages = pages[:limit]
-            self.pdf_ocr_page_limit_hit = True
+        self.pdf_ocr_page_limit_hit = last_page < total_pages
 
         texts: list[str] = []
         for page in pages:
             texts.append(self.ocr_image(page))
         return "\n\n".join(texts), total_pages
+
+    def ocr_pdf_for_classification(self, path: Path) -> tuple[str, int]:
+        """OCR the first N pages at classification DPI (fast path for folder assignment)."""
+        return self.ocr_pdf(
+            path,
+            dpi=self.config.classification_pdf_dpi,
+            max_pages=self.config.classification_pdf_ocr_pages,
+        )
