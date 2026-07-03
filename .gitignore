@@ -6,6 +6,11 @@ __pycache__/
 .eggs/
 dist/
 build/
+
+# Windows installer packaging (PyInstaller + Inno Setup staging)
+packaging/build/
+packaging/dist/
+packaging/dev-install/
 .venv/
 venv/
 env/
