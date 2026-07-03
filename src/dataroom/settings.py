@@ -9,7 +9,7 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 
-from dataroom.config import resolve_project_root
+from dataroom.paths import is_bundled, resolve_env_file, resolve_project_root
 
 
 @dataclass(frozen=True)
@@ -70,8 +70,12 @@ def _parse_extra_headers(raw: str) -> dict[str, str]:
 
 
 def _load_dotenv() -> None:
-    root = resolve_project_root()
-    env_path = root / ".env"
+    if is_bundled():
+        env_path = resolve_env_file()
+        if env_path.is_file():
+            load_dotenv(env_path)
+        return
+    env_path = resolve_project_root() / ".env"
     if env_path.is_file():
         load_dotenv(env_path)
 

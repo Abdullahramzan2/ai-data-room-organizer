@@ -14,8 +14,10 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 
 def resolve_project_root() -> Path:
-    """Return repository root (parent of src/)."""
-    return Path(__file__).resolve().parents[2]
+    """Return app root (dev repo or bundled ``app/`` directory)."""
+    from dataroom.paths import resolve_app_root
+
+    return resolve_app_root()
 
 
 def load_app_config(config_path: Path | None = None) -> dict[str, Any]:

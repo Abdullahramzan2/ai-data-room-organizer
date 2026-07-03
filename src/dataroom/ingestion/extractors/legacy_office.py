@@ -10,6 +10,7 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from dataroom.paths import bundled_libreoffice_cmd
 from dataroom.ocr.tesseract import TesseractOcr
 
 logger = logging.getLogger(__name__)
@@ -25,11 +26,15 @@ _LIBREOFFICE_WINDOWS_PATHS = (
 
 
 def resolve_libreoffice_cmd(configured: str | None) -> str | None:
-    """Return LibreOffice soffice path from config, PATH, or common Windows install locations."""
+    """Return LibreOffice soffice path from config, bundle, PATH, or common Windows paths."""
     if configured:
         cmd = Path(configured)
         if cmd.is_file():
             return str(cmd)
+
+    bundled = bundled_libreoffice_cmd()
+    if bundled:
+        return bundled
 
     found = shutil.which("soffice")
     if found:

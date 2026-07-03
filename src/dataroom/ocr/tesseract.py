@@ -9,6 +9,8 @@ from pathlib import Path
 
 from PIL import Image
 
+from dataroom.paths import bundled_poppler_path, bundled_tesseract_cmd
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,10 +57,13 @@ _POPPLER_WINDOWS_DIRS = (
 
 
 def resolve_tesseract_cmd(configured: str | None) -> str | None:
-    """Return Tesseract binary path from config, PATH, or common Windows install locations."""
+    """Return Tesseract binary path from config, bundle, PATH, or common Windows locations."""
     if configured:
         path = Path(configured)
         return str(path) if path.is_file() else configured
+    bundled = bundled_tesseract_cmd()
+    if bundled:
+        return bundled
     found = shutil.which("tesseract")
     if found:
         return found
@@ -69,7 +74,7 @@ def resolve_tesseract_cmd(configured: str | None) -> str | None:
 
 
 def resolve_poppler_path(configured: str | None) -> str | None:
-    """Return Poppler bin directory for pdf2image (PATH or common Windows locations)."""
+    """Return Poppler bin directory for pdf2image (config, bundle, PATH, or Windows paths)."""
     if configured:
         path = Path(configured)
         if path.is_dir():
@@ -77,6 +82,9 @@ def resolve_poppler_path(configured: str | None) -> str | None:
         if (path / "pdftoppm.exe").is_file() or (path / "pdftoppm").is_file():
             return str(path)
         return configured
+    bundled = bundled_poppler_path()
+    if bundled:
+        return bundled
     found = shutil.which("pdftoppm")
     if found:
         return str(Path(found).parent)
