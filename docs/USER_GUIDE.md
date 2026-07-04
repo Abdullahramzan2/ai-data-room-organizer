@@ -1,6 +1,13 @@
 # User Guide — Data Room Organizer
 
-Operator guide for Carl Quesinberry and team. For installation, see **Windows installation** in `README.md`. For a live walkthrough, see `docs/DEMO.md`.
+Operator guide for Carl Quesinberry and team.
+
+| How you installed | Start here |
+|-------------------|------------|
+| **Windows installer** (`AI-Data-Room-Organizer-Setup.exe`) | `docs/INSTALLER_QUICKSTART.md` |
+| **Zip / developer** (Python + README steps) | **Windows installation** in `README.md` |
+
+For a live walkthrough, see `docs/DEMO.md`. To add Ollama after install, see `docs/OLLAMA_SETUP.md`.
 
 ---
 
@@ -20,12 +27,21 @@ Operator guide for Carl Quesinberry and team. For installation, see **Windows in
 
 ### 1. Prepare
 
+**Windows installer:**
+
+1. Launch **Data Room Organizer** from the Start Menu (or run **Data Room Doctor** first).
+2. In the UI, open the **Doctor** tab and confirm no **FAIL** items.
+
+**Zip / developer install:**
+
 ```powershell
 .venv\Scripts\activate
 dataroom doctor
 ```
 
 Fix any **fail** items before large batches. Warnings (e.g. LibreOffice missing) may be acceptable if you do not process legacy `.doc` / `.ppt`.
+
+Installer users: settings live in `%APPDATA%\DataRoomOrganizer\.env` (created on first launch).
 
 ### 2. Run the pipeline
 
@@ -36,6 +52,8 @@ dataroom run "D:\Projects\Sample Data" --output-dir output\project_alpha
 ```
 
 **UI (recommended for review and exploration):**
+
+Launch from the **Start Menu** → **Data Room Organizer** (installer), or:
 
 ```powershell
 dataroom ui
@@ -176,7 +194,12 @@ The tool reports duplicates within the scanned input batch; it does not delete o
 
 ## Classification modes
 
-Set in `.env` (copy from `.env.example`):
+Set in `.env`:
+
+| Install type | Settings file |
+|--------------|---------------|
+| Windows installer | `%APPDATA%\DataRoomOrganizer\.env` |
+| Zip / developer | Project root `.env` (copy from `.env.example`) |
 
 | Mode | Behavior |
 |------|----------|
@@ -184,7 +207,7 @@ Set in `.env` (copy from `.env.example`):
 | `hybrid` | Local first; LLM for ambiguous files (recommended) |
 | `api` | LLM-assisted when provider configured |
 
-Tier 3 providers: `auto`, `local`, `openai`, `ollama`, `enterprise`. See `README.md` for examples.
+Tier 3 providers: `auto`, `local`, `openai`, `ollama`, `enterprise`. See `README.md` for examples. For Ollama setup after install, see `docs/OLLAMA_SETUP.md`.
 
 KMZ and DWG files are always **local-only** — never sent to external APIs.
 
@@ -200,7 +223,7 @@ KMZ and DWG files are always **local-only** — never sent to external APIs.
 | `rerun` says missing cache | Run full `dataroom run` first on that output folder |
 | UI shows subprocess error | Read the error message; fix paths or run `dataroom doctor` |
 | Cannot save review queue | Close `review_queue.xlsx` in Excel or another editor, then retry |
-| Ollama not used | Start `ollama serve`; set `REASONING_PROVIDER=ollama` in `.env` |
+| Ollama not used | Start `ollama serve`; set `REASONING_PROVIDER=ollama` in `.env` — see `docs/OLLAMA_SETUP.md` |
 | Same file in/out of review queue | Tier 3 (Ollama) is non-deterministic for ambiguous docs — see `docs/CALIBRATION.md` |
 | Review queue empty but files look wrong | Check `00_Admin_and_Index/manifest.xlsx` — only medium/low confidence rows appear in review queue |
 | Re-run stacks `_2`, `_3` filenames | Use a fresh output folder for clean demos; rerun does not delete old copies |
@@ -223,7 +246,9 @@ dataroom ui
 
 ## Related documents
 
-- `README.md` — installation and command reference
+- `docs/INSTALLER_QUICKSTART.md` — Windows installer (Carl delivery)
+- `docs/OLLAMA_SETUP.md` — optional Ollama configuration
+- `README.md` — zip/developer installation and command reference
 - `docs/DEMO.md` — guided demo for stakeholders
 - `docs/TESTING.md` — QA / acceptance checklist
 - `docs/CALIBRATION.md` — tuning thresholds and taxonomy

@@ -18,7 +18,8 @@ $copyItems = @(
     @{ Source = Join-Path $ProjectRoot "src"; Dest = "src" },
     @{ Source = Join-Path $ProjectRoot "config"; Dest = "config" },
     @{ Source = Join-Path $ProjectRoot "taxonomy"; Dest = "taxonomy" },
-    @{ Source = Join-Path $ProjectRoot ".streamlit"; Dest = ".streamlit" }
+    @{ Source = Join-Path $ProjectRoot ".streamlit"; Dest = ".streamlit" },
+    @{ Source = Join-Path $ProjectRoot "docs"; Dest = "docs" }
 )
 foreach ($item in $copyItems) {
     Copy-Tree -Source $item.Source -Destination (Join-Path $AppDir $item.Dest)

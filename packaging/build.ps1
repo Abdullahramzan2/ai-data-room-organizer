@@ -105,8 +105,8 @@ Write-StageStep "Staging complete"
 $totalMb = Format-SizeMb (Get-TreeSizeBytes $StageRoot)
 Write-Host "Total staged size: $totalMb MB"
 if ($BuildInstaller) {
-    $buildInstaller = Join-Path $PSScriptRoot "build_installer.ps1"
-    & $buildInstaller -Version $Version -StageRoot $StageRoot
+    $installerScript = Join-Path $PSScriptRoot "build_installer.ps1"
+    & $installerScript -Version $Version -StageRoot $StageRoot
 } else {
     Write-Host "Next: powershell -ExecutionPolicy Bypass -File packaging\build_installer.ps1"
 }
