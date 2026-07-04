@@ -17,7 +17,8 @@ param(
     [switch]$SkipModel,
     [switch]$SkipLauncher,
     [switch]$SkipClean,
-    [switch]$ResumePython
+    [switch]$ResumePython,
+    [switch]$BuildInstaller
 )
 
 $ErrorActionPreference = "Stop"
@@ -103,7 +104,12 @@ Set-Content -Path (Join-Path $StageRoot "BUILD_INFO.txt") -Value $buildInfo -Enc
 Write-StageStep "Staging complete"
 $totalMb = Format-SizeMb (Get-TreeSizeBytes $StageRoot)
 Write-Host "Total staged size: $totalMb MB"
-Write-Host "Next: Inno Setup (packaging/installer.iss) in todo 4"
+if ($BuildInstaller) {
+    $buildInstaller = Join-Path $PSScriptRoot "build_installer.ps1"
+    & $buildInstaller -Version $Version -StageRoot $StageRoot
+} else {
+    Write-Host "Next: powershell -ExecutionPolicy Bypass -File packaging\build_installer.ps1"
+}
 Write-Host ""
 Get-ChildItem $StageRoot -Directory | ForEach-Object {
     $dirSize = Format-SizeMb (Get-TreeSizeBytes $_.FullName)
