@@ -12,6 +12,10 @@ packaging/build/
 packaging/dist/
 packaging/dev-install/
 packaging/staging/
+packaging/test-install/
+packaging/smoke-input/
+packaging/smoke-output/
+packaging/smoke-ingest.json
 packaging/downloads/
 packaging/cache/
 .venv/
