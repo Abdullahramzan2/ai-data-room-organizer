@@ -11,6 +11,9 @@ build/
 packaging/build/
 packaging/dist/
 packaging/dev-install/
+packaging/staging/
+packaging/downloads/
+packaging/cache/
 .venv/
 venv/
 env/
