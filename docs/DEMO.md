@@ -2,7 +2,7 @@
 
 **Duration:** ~20 minutes  
 **Audience:** Carl Quesinberry / stakeholders  
-**Version:** 0.4.0  
+**Version:** 0.5.0  
 **Sample data:** 19-file real estate development set (or any folder with mixed PDFs, Office, KMZ)
 
 ---

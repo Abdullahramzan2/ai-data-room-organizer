@@ -4,7 +4,7 @@
 |---|---|
 | **Client** | Carl Quesinberry |
 | **Milestone** | Bundled Windows installer — no Python/pip/terminal setup |
-| **Installer version** | 0.5.0 |
+| **Version** | 0.5.0 (package + installer) |
 | **Status** | Delivered |
 
 ---

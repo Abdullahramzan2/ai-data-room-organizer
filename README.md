@@ -2,19 +2,23 @@
 
 Local tool to ingest, classify, and organize large document batches into a data-room folder structure. Original source files are never modified.
 
-**Current release: v0.4.0** — see `docs/MILESTONE_4.md` (earlier: `docs/MILESTONE_1.md`, `docs/MILESTONE_2.md`, `docs/MILESTONE_3.md`).
+**Current release: v0.5.0** — see `docs/MILESTONE_5.md` (Windows installer). Earlier: `docs/MILESTONE_4.md`, `docs/MILESTONE_3.md`, `docs/MILESTONE_2.md`, `docs/MILESTONE_1.md`.
 
 | Document | Purpose |
 |----------|---------|
+| `docs/INSTALLER_QUICKSTART.md` | Windows installer (Carl delivery) |
 | `docs/USER_GUIDE.md` | Day-to-day operator workflow |
-| `README.md` | Quick install, command reference, and Windows setup (below) |
+| `README.md` | Zip/developer install, command reference (below) |
 | `docs/DEMO.md` | Stakeholder demo script |
 | `docs/TESTING.md` | QA / acceptance test checklist |
 | `docs/CALIBRATION.md` | Threshold and taxonomy tuning |
+| `docs/OLLAMA_SETUP.md` | Optional Ollama configuration |
 
 ## Windows installation
 
-Step-by-step setup for **v0.4.0** on Windows 10/11. Open **PowerShell** (not CMD) as a normal user.
+**Installer (recommended):** run `AI-Data-Room-Organizer-Setup.exe` — see `docs/INSTALLER_QUICKSTART.md`.
+
+**Developer / zip install** for **v0.5.0** on Windows 10/11. Open **PowerShell** (not CMD) as a normal user.
 
 ### 1. Prerequisites
 

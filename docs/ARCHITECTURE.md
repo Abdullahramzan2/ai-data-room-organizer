@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.4.0 |
+| **Version** | 0.5.0 |
 | **Milestone** | M1 Ingestion + M2 Prototype + M3 Enterprise + M4 Production |
 | **Status** | Delivered |
 | **Date** | June 2026 |
@@ -547,3 +547,4 @@ See `docs/MILESTONE_4.md`, `docs/USER_GUIDE.md`.
 | 0.2.0 | June 2026 | Refocused on Milestone 1 deliverables only; added path conventions, filesystem date notes, `MILESTONE_1.md` reference |
 | 0.3.0 | June 2026 | Added §5 confirmed classification approach (hybrid local-first + optional API) |
 | 0.4.0 | June 2026 | §16 Milestone 4: cache, duplicates, Excel/HTML exports, doctor, rerun, UI, batch embeddings |
+| 0.5.0 | July 2026 | Bundled Windows installer, launcher, path resolution for install layout, operator install docs |
