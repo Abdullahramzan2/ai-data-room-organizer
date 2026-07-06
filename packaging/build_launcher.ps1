@@ -9,9 +9,14 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
+$Python = Join-Path $Root ".venv\Scripts\python.exe"
+if (-not (Test-Path $Python)) {
+    $Python = "python"
+}
+
 if (-not $SkipInstall) {
     Write-Host "Installing PyInstaller..."
-    python -m pip install pyinstaller --quiet
+    & $Python -m pip install pyinstaller --quiet
 }
 
 $dist = Join-Path $PSScriptRoot "dist"
@@ -20,13 +25,13 @@ if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
 if (Test-Path $build) { Remove-Item $build -Recurse -Force }
 
 Write-Host "Building DataRoomOrganizer.exe (UI, no console)..."
-python -m PyInstaller (Join-Path $PSScriptRoot "launcher.spec") `
+& $Python -m PyInstaller (Join-Path $PSScriptRoot "launcher.spec") `
     --noconfirm --clean `
     --distpath $dist `
     --workpath $build
 
 Write-Host "Building DataRoomDoctor.exe (doctor, console)..."
-python -m PyInstaller (Join-Path $PSScriptRoot "launcher_doctor.spec") `
+& $Python -m PyInstaller (Join-Path $PSScriptRoot "launcher_doctor.spec") `
     --noconfirm --clean `
     --distpath $dist `
     --workpath (Join-Path $build "doctor")

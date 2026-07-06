@@ -83,6 +83,21 @@ def is_frozen_launcher() -> bool:
     return bool(getattr(sys, "frozen", False))
 
 
+def is_doctor_launcher() -> bool:
+    """True when running as the PyInstaller-built doctor executable."""
+    return is_frozen_launcher() and Path(sys.executable).stem.lower() == "dataroomdoctor"
+
+
+def pause_doctor_console() -> None:
+    """Keep the doctor console open so shortcut users can read the report."""
+    if not is_doctor_launcher():
+        return
+    try:
+        input("\nPress Enter to close...")
+    except (EOFError, KeyboardInterrupt):
+        pass
+
+
 def resolve_install_root_from_launcher(
     launcher_path: Path | None = None,
     *,
@@ -177,15 +192,23 @@ def bundled_python_executable(install_root: Path, *, dev: bool = False) -> Path:
     if dev or not is_bundled_install_root(install_root):
         return Path(sys.executable).resolve()
 
-    candidates = (
-        install_root / "python" / "python.exe",
-        install_root / "python" / "Scripts" / "python.exe",
-    )
+    python_dir = install_root / "python"
+    venv_cfg = python_dir / "pyvenv.cfg"
+    if venv_cfg.is_file():
+        candidates = (
+            python_dir / "Scripts" / "python.exe",
+            python_dir / "python.exe",
+        )
+    else:
+        candidates = (
+            python_dir / "python.exe",
+            python_dir / "Scripts" / "python.exe",
+        )
     for candidate in candidates:
         if candidate.is_file():
             return candidate.resolve()
     raise FileNotFoundError(
-        f"Bundled Python not found under {install_root / 'python'}. "
+        f"Bundled Python not found under {python_dir}. "
         "Run packaging/build.ps1 or packaging/stage_dev_install.ps1 first."
     )
 
@@ -289,12 +312,22 @@ def launch_ui(
 
 def launch_doctor(install_root: Path, *, env: dict[str, str] | None = None, dev: bool = False) -> int:
     """Run ``dataroom doctor``."""
+    if is_doctor_launcher():
+        print("Data Room Organizer - environment check")
+        print(f"Install folder: {install_root.resolve()}")
     if dev:
         runtime_env = os.environ.copy()
     else:
         runtime_env = env or apply_bundled_environment(install_root)
         activate_bundled_environment(runtime_env)
         ensure_user_env_file()
+    if is_doctor_launcher():
+        try:
+            python = bundled_python_executable(install_root, dev=dev)
+            print(f"Python: {python}")
+        except FileNotFoundError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
     return run_managed_subprocess(
         build_doctor_command(install_root, dev=dev),
         env=runtime_env,
@@ -337,6 +370,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.install_root is not None:
         dev_mode = False
 
+    doctor_console = args.doctor and is_doctor_launcher()
+    exit_code = 1
     try:
         install_root = resolve_install_root_from_launcher(
             override=args.install_root,
@@ -346,14 +381,19 @@ def main(argv: list[str] | None = None) -> int:
             raise RuntimeError(_INSTALL_INCOMPLETE_MSG)
 
         if args.doctor:
-            return launch_doctor(install_root, dev=dev_mode)
-        return launch_ui(install_root, open_browser=not args.no_browser, dev=dev_mode)
+            exit_code = launch_doctor(install_root, dev=dev_mode)
+        else:
+            exit_code = launch_ui(install_root, open_browser=not args.no_browser, dev=dev_mode)
     except (FileNotFoundError, RuntimeError, OSError) as exc:
         show_launcher_error(f"Launcher error: {exc}")
-        return 1
+        exit_code = 1
     except KeyboardInterrupt:
         print("\nStopped.", file=sys.stderr)
-        return 0
+        exit_code = 0
+    finally:
+        if doctor_console:
+            pause_doctor_console()
+    return exit_code
 
 
 if __name__ == "__main__":

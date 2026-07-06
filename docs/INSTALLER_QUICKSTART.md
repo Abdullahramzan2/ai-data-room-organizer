@@ -29,8 +29,18 @@ One setup file that installs everything:
 
    `C:\Program Files\AI Data Room Organizer\`
 
-6. Optionally check **Create a desktop icon**.
-7. Click **Install** and wait for extraction to finish (several minutes).
+   Do **not** install into the project `packaging\` folder — that path is for developer testing only.
+
+6. Before upgrading or reinstalling, close the UI and run:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File packaging\stop_dataroom.ps1
+   ```
+
+   (Or close **Data Room Organizer** from Task Manager and wait a few seconds.)
+
+7. Optionally check **Create a desktop icon**.
+8. Click **Install** and wait for extraction to finish (several minutes).
 
 ### 2. Launch the app
 
@@ -101,6 +111,8 @@ User settings in `%APPDATA%\DataRoomOrganizer\` are kept unless you delete that 
 
 | Issue | Fix |
 |-------|-----|
+| Setup "Access is denied" during install | Close the UI; run `packaging\stop_dataroom.ps1`; uninstall the old copy; reinstall to **Program Files** (not `packaging\test-install`) |
+| Doctor window closes instantly | Install may be incomplete — uninstall, stop processes, reinstall; Doctor now waits for **Press Enter** after the report |
 | Setup blocked by antivirus | Allow the file; re-download if quarantined |
 | Browser does not open | Manually open `http://127.0.0.1:8501` |
 | Doctor shows FAIL | Re-run Doctor; if still failing, contact support with a screenshot |

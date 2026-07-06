@@ -8,8 +8,10 @@ from dataroom.bundled_launcher import (
     build_ui_command,
     bundled_python_executable,
     ensure_user_env_file,
+    is_doctor_launcher,
     launch_doctor,
     launch_ui,
+    pause_doctor_console,
     resolve_install_root_from_launcher,
     tool_bin_paths,
 )
@@ -104,6 +106,15 @@ def test_tool_bin_paths_collects_existing_dirs(tmp_path):
     assert str((install / "tools" / "poppler" / "Library" / "bin").resolve()) in bins
 
 
+def test_bundled_python_executable_prefers_venv_scripts(tmp_path):
+    install = _stage_bundle(tmp_path)
+    scripts_python = install / "python" / "Scripts" / "python.exe"
+    scripts_python.parent.mkdir(parents=True, exist_ok=True)
+    scripts_python.write_text("stub", encoding="utf-8")
+    (install / "python" / "pyvenv.cfg").write_text("home = .\n", encoding="utf-8")
+    assert bundled_python_executable(install) == scripts_python.resolve()
+
+
 def test_bundled_python_executable(tmp_path):
     install = _stage_bundle(tmp_path)
     assert bundled_python_executable(install) == (install / "python" / "python.exe").resolve()
@@ -177,3 +188,12 @@ def test_launch_doctor_invokes_subprocess(tmp_path, monkeypatch):
 
     assert code == 0
     run.assert_called_once()
+
+
+def test_pause_doctor_console_noop_when_not_frozen(monkeypatch):
+    monkeypatch.setattr("dataroom.bundled_launcher.is_doctor_launcher", lambda: False)
+    pause_doctor_console()
+
+
+def test_is_doctor_launcher_false_for_source_python():
+    assert is_doctor_launcher() is False
