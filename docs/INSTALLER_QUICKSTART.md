@@ -113,6 +113,7 @@ User settings in `%APPDATA%\DataRoomOrganizer\` are kept unless you delete that 
 |-------|-----|
 | Setup "Access is denied" during install | Close the UI; run `packaging\stop_dataroom.ps1`; uninstall the old copy; reinstall to **Program Files** (not `packaging\test-install`) |
 | Doctor window closes instantly | Install may be incomplete — uninstall, stop processes, reinstall; Doctor now waits for **Press Enter** after the report |
+| Ctrl+C hangs on "Stopping..." | Close the console window, or Task Manager → end `python.exe` for Data Room Organizer; rebuild launchers for faster stop |
 | Setup blocked by antivirus | Allow the file; re-download if quarantined |
 | Browser does not open | Manually open `http://127.0.0.1:8501` |
 | Doctor shows FAIL | Re-run Doctor; if still failing, contact support with a screenshot |

@@ -50,6 +50,13 @@ class PipelineSubprocessError(RuntimeError):
 
 
 def _cli_base() -> list[str]:
+    from dataroom.bundled_launcher import bundled_python_executable
+    from dataroom.paths import is_bundled, resolve_install_root
+
+    if is_bundled():
+        install = resolve_install_root()
+        if install is not None:
+            return [str(bundled_python_executable(install)), "-m", "dataroom.cli"]
     return [sys.executable, "-m", "dataroom.cli"]
 
 

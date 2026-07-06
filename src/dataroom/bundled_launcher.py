@@ -271,18 +271,66 @@ def resolve_working_directory(install_root: Path, *, dev: bool = False) -> str:
     return str(install_root.resolve())
 
 
-def run_managed_subprocess(argv: list[str], *, env: dict[str, str], cwd: str) -> int:
-    """Run a child process and shut it down cleanly on Ctrl+C."""
-    proc = subprocess.Popen(argv, env=env, cwd=cwd)
-    try:
-        return int(proc.wait())
-    except KeyboardInterrupt:
+def _windows_popen_kwargs() -> dict[str, int]:
+    """Keep Ctrl+C on the launcher so we can stop Streamlit and pipeline children."""
+    if sys.platform != "win32":
+        return {}
+    return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+
+
+def _kill_process_tree(pid: int) -> None:
+    """Terminate a child process and its descendants (pipeline subprocesses on Windows)."""
+    if pid <= 0:
+        return
+    if sys.platform == "win32":
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(pid)],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return
+    proc = subprocess.Popen(["kill", "-TERM", str(pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc.wait(timeout=5)
+
+
+def _shutdown_managed_child(proc: subprocess.Popen[bytes]) -> None:
+    if proc.poll() is not None:
+        return
+    if sys.platform == "win32":
         proc.terminate()
         try:
-            proc.wait(timeout=5)
+            proc.wait(timeout=8)
+            return
+        except subprocess.TimeoutExpired:
+            pass
+        _kill_process_tree(proc.pid)
+        try:
+            proc.wait(timeout=3)
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait()
+        return
+    proc.terminate()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+
+
+def run_managed_subprocess(argv: list[str], *, env: dict[str, str], cwd: str) -> int:
+    """Run a child process and shut it down cleanly on Ctrl+C."""
+    proc = subprocess.Popen(argv, env=env, cwd=cwd, **_windows_popen_kwargs())
+    try:
+        while proc.poll() is None:
+            try:
+                proc.wait(timeout=0.5)
+            except subprocess.TimeoutExpired:
+                continue
+        return int(proc.returncode or 0)
+    except KeyboardInterrupt:
+        _shutdown_managed_child(proc)
         print("\nStopped.", file=sys.stderr)
         return 0
 

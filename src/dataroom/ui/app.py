@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from dataroom.config import load_app_config, load_taxonomy, resolve_project_root
+from dataroom.paths import default_input_dir, default_output_dir
 from dataroom.export.review_queue import (
     REVIEW_COLUMNS,
     ReviewQueueWriteError,
@@ -52,11 +53,10 @@ st.set_page_config(
 
 
 def _init_session_state() -> None:
-    root = resolve_project_root()
     if "output_dir" not in st.session_state:
-        st.session_state.output_dir = str(root / "output")
+        st.session_state.output_dir = str(default_output_dir())
     if "input_dir" not in st.session_state:
-        st.session_state.input_dir = str(root / "data")
+        st.session_state.input_dir = str(default_input_dir())
     if "pipeline_running" not in st.session_state:
         st.session_state.pipeline_running = False
     if "pipeline_start_pending" not in st.session_state:
@@ -124,6 +124,7 @@ def _page_run() -> None:
     st.header("Run pipeline")
     st.caption(
         "Ingest, classify, organize, and export in one step. Original files are never modified. "
+        "Exports appear in the output folder only after the run **fully completes** (organize + export). "
         "Exports include manifest, HTML index, review queue, duplicate report, classification log, "
         "processing log, and admin mirror in `00_Admin_and_Index/`."
     )

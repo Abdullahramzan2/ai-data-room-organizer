@@ -127,6 +127,8 @@ corrections:
 
 paths:
   taxonomy_file: taxonomy/real_estate_development.yaml
+  # Dev repo: taxonomy embedding cache under output/.cache.
+  # Bundled install: uses %APPDATA%\DataRoomOrganizer\cache (Program Files is read-only).
   cache_dir: output/.cache
 
 output:
@@ -150,7 +152,10 @@ output:
   keep_admin_artifacts_at_root: false
 
 pipeline:
+  # false = ingest in parallel, then batch embeddings (faster for multi-file runs).
+  # true = overlap ingest + per-file classification (slower on CPU for large batches).
+  pipelined: false
   # Parallel ingestion workers (OCR/extract). Increase on multi-core machines.
   ingestion_workers: 3
-  # Classification workers; embedding model calls are serialized per engine.
+  # Used only when pipelined: true
   classification_workers: 2

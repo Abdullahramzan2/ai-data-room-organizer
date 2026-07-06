@@ -137,25 +137,81 @@ def run_pipeline(
         pipeline_cfg = config.get("pipeline", {}) or {}
         ingestion_workers = int(pipeline_cfg.get("ingestion_workers", 1))
         classification_workers = int(pipeline_cfg.get("classification_workers", 2))
+        use_pipelined = bool(pipeline_cfg.get("pipelined", False))
 
         def on_ingest_progress(index: int, total: int, path: Path) -> None:
             tracker.file_ingesting(path, index, total)
 
         tracker.begin_ingestion()
         tracker.set_phase("ingesting")
-        ingestion_result, classification_objects = run_pipelined_ingest_and_classify(
-            scanned_files,
-            tracker=tracker,
-            engine=engine,
-            document_from_row=_document_from_row,
-            ocr_config=ocr_config,
-            legacy_office_config=legacy_office_config,
-            max_file_size_bytes=ingest_cfg.get("max_file_size_bytes", 0),
-            max_text_chars=ingest_cfg.get("max_text_chars", 500_000),
-            ingestion_workers=ingestion_workers,
-            classification_workers=classification_workers,
-            on_ingest_progress=on_ingest_progress,
-        )
+
+        if use_pipelined:
+            ingestion_result, classification_objects = run_pipelined_ingest_and_classify(
+                scanned_files,
+                tracker=tracker,
+                engine=engine,
+                document_from_row=_document_from_row,
+                ocr_config=ocr_config,
+                legacy_office_config=legacy_office_config,
+                max_file_size_bytes=ingest_cfg.get("max_file_size_bytes", 0),
+                max_text_chars=ingest_cfg.get("max_text_chars", 500_000),
+                ingestion_workers=ingestion_workers,
+                classification_workers=classification_workers,
+                on_ingest_progress=on_ingest_progress,
+            )
+        else:
+            def on_file_complete(path: Path, outcome: str, error: str) -> None:
+                if outcome == "skipped":
+                    tracker.file_skipped(path)
+                elif outcome == "failed":
+                    tracker.file_failed(path, error)
+                else:
+                    tracker.file_ingested(path)
+
+            ingestion_result = run_ingestion_from_files(
+                scanned_files,
+                ocr_config=ocr_config,
+                legacy_office_config=legacy_office_config,
+                max_file_size_bytes=ingest_cfg.get("max_file_size_bytes", 0),
+                max_text_chars=ingest_cfg.get("max_text_chars", 500_000),
+                max_workers=ingestion_workers,
+                on_progress=on_ingest_progress,
+                on_file_complete=on_file_complete,
+            )
+            timings["ingestion_seconds"] = round(time.perf_counter() - phase_started, 2)
+            phase_started = time.perf_counter()
+
+            doc_by_path_docs = {
+                str(Path(doc.metadata.source_path).resolve()): doc
+                for doc in ingestion_result.documents
+            }
+            documents_ordered = [
+                doc_by_path_docs[str(path.resolve())]
+                for path in scanned_files
+                if str(path.resolve()) in doc_by_path_docs
+            ]
+
+            tracker.set_phase("classifying")
+
+            def on_classifying(index: int, total: int, path: Path) -> None:
+                tracker.file_classifying(path)
+
+            def on_classified(index: int, total: int, result: Any) -> None:
+                tracker.file_classified(
+                    result.source_path,
+                    category_folder=result.category_folder,
+                    confidence=result.confidence,
+                    needs_review=result.needs_review,
+                )
+
+            classification_objects = engine.classify_batch(
+                documents_ordered,
+                on_classifying=on_classifying,
+                on_classified=on_classified,
+            )
+            timings["classification_seconds"] = round(time.perf_counter() - phase_started, 2)
+            phase_started = time.perf_counter()
+
         tracker.set_skipped_count(len(ingestion_result.skipped_files))
 
         doc_by_path = {
@@ -168,8 +224,9 @@ def run_pipeline(
             if str(path.resolve()) in doc_by_path
         ]
         _attach_file_hashes(ingestion_docs)
-        timings["ingestion_seconds"] = round(time.perf_counter() - phase_started, 2)
-        phase_started = time.perf_counter()
+        if use_pipelined:
+            timings["ingestion_seconds"] = round(time.perf_counter() - phase_started, 2)
+            phase_started = time.perf_counter()
 
         tracker.set_phase("duplicates")
         duplicate_pairs = detect_duplicates(ingestion_docs, duplicate_config)
@@ -183,8 +240,9 @@ def run_pipeline(
             duplicate_pairs,
             flag_for_review=duplicate_config.flag_for_review,
         )
-        timings["classification_seconds"] = round(time.perf_counter() - phase_started, 2)
-        phase_started = time.perf_counter()
+        if use_pipelined:
+            timings["classification_seconds"] = round(time.perf_counter() - phase_started, 2)
+            phase_started = time.perf_counter()
 
         output_dir.mkdir(parents=True, exist_ok=True)
 

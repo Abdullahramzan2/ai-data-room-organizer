@@ -74,6 +74,13 @@ def user_config_dir() -> Path:
     return resolve_project_root()
 
 
+def user_cache_dir() -> Path:
+    """Writable cache directory for taxonomy embedding indexes and similar artifacts."""
+    path = user_config_dir() / "cache"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def resolve_env_file() -> Path:
     """Path to the active ``.env`` file for the current install mode."""
     return user_config_dir() / ".env"
@@ -108,6 +115,27 @@ def bundled_poppler_path() -> str | None:
         if (candidate / "pdftoppm.exe").is_file() or (candidate / "pdftoppm").is_file():
             return str(candidate)
     return None
+
+
+def default_output_dir() -> Path:
+    """Writable default output folder for the active install mode."""
+    if is_bundled():
+        path = Path.home() / "Desktop" / "output"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+    return resolve_project_root() / "output"
+
+
+def default_input_dir() -> Path:
+    """Default input folder hint for the active install mode."""
+    if is_bundled():
+        sample = Path.home() / "Desktop" / "Sample Data"
+        if sample.is_dir():
+            return sample
+        path = Path.home() / "Desktop" / "input"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+    return resolve_project_root() / "data"
 
 
 def bundled_libreoffice_cmd() -> str | None:

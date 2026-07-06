@@ -158,25 +158,36 @@ def test_run_managed_subprocess_handles_keyboard_interrupt():
     from dataroom.bundled_launcher import run_managed_subprocess
 
     class FakeProc:
+        pid = 4242
+
         def __init__(self):
             self._wait_calls = 0
+            self.returncode = None
+
+        def poll(self):
+            return 0 if self._wait_calls >= 2 else None
 
         def wait(self, timeout=None):
             self._wait_calls += 1
             if self._wait_calls == 1:
                 raise KeyboardInterrupt
+            self.returncode = 0
             return 0
 
         def terminate(self):
             pass
 
         def kill(self):
-            pass
+            self.returncode = 0
 
-    with patch("dataroom.bundled_launcher.subprocess.Popen", return_value=FakeProc()):
+    with (
+        patch("dataroom.bundled_launcher.subprocess.Popen", return_value=FakeProc()),
+        patch("dataroom.bundled_launcher._kill_process_tree") as kill_tree,
+    ):
         code = run_managed_subprocess(["python"], env={}, cwd=".")
 
     assert code == 0
+    kill_tree.assert_called_once_with(4242)
 
 
 def test_launch_doctor_invokes_subprocess(tmp_path, monkeypatch):

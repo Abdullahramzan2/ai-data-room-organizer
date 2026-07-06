@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from dataroom.classification.engine import default_cache_dir
 from dataroom.config import load_app_config, resolve_project_root
 from dataroom.ingestion.extractors.legacy_office import resolve_libreoffice_cmd
 from dataroom.ocr.tesseract import resolve_poppler_path, resolve_tesseract_cmd
@@ -16,6 +17,7 @@ from dataroom.paths import (
     resolve_models_dir,
     resolve_tools_dir,
     user_config_dir,
+    user_cache_dir,
 )
 from dataroom.settings import get_settings
 
@@ -105,6 +107,27 @@ def test_bundled_user_config_dir(monkeypatch, tmp_path):
     assert config_dir == tmp_path / "appdata" / "DataRoomOrganizer"
     assert resolve_env_file() == config_dir / ".env"
     assert env_example_path() == install / "app" / ".env.example"
+
+
+def test_bundled_user_cache_dir(monkeypatch, tmp_path):
+    install = _stage_bundle(tmp_path)
+    monkeypatch.setenv("DATAROOM_HOME", str(install))
+    monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
+
+    cache_dir = user_cache_dir()
+    assert cache_dir == tmp_path / "appdata" / "DataRoomOrganizer" / "cache"
+    assert cache_dir.is_dir()
+
+    config = load_app_config()
+    assert default_cache_dir(config) == cache_dir
+
+
+def test_dev_cache_dir_under_project_output(monkeypatch, tmp_path):
+    monkeypatch.delenv("DATAROOM_HOME", raising=False)
+    config = load_app_config()
+    cache_dir = default_cache_dir(config)
+    assert cache_dir == resolve_project_root() / "output" / ".cache"
+    assert cache_dir.is_dir()
 
 
 def test_bundled_settings_load_env_from_appdata(monkeypatch, tmp_path):
