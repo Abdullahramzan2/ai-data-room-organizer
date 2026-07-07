@@ -1,6 +1,6 @@
 # User Guide — Data Room Organizer
 
-Operator guide for Carl Quesinberry and team.
+**Version 0.5.3** — operator guide for Carl Quesinberry and team.
 
 | How you installed | Start here |
 |-------------------|------------|
@@ -60,6 +60,8 @@ dataroom ui
 ```
 
 In the sidebar, set **Input folder** and **Output directory** (use **Browse…**), then click **Run pipeline** on the Run tab.
+
+While the run is active, the status line updates live — *Starting the pipeline…* → *Ingesting files…* → *Classifying files…* → *Organizing files…* → **Pipeline finished.** Metrics and the per-file table update automatically.
 
 Options:
 
@@ -149,7 +151,7 @@ If many files land in review queue or wrong folders:
 
 | Tab | Purpose |
 |-----|---------|
-| **Run** | Execute full pipeline; live per-file progress; run summary with all export paths |
+| **Run** | Execute full pipeline; live status (ingest/classify/organize); per-file progress table; final summary |
 | **Review** | Edit `corrected_folder` (including duplicate-flagged rows), optional rename on rerun, save, rerun |
 | **Taxonomy** | View category IDs, folders, keyword counts |
 | **Doctor** | Environment check (Python, Tesseract, embedding model, Ollama) |
@@ -196,10 +198,10 @@ The tool reports duplicates within the scanned input batch; it does not delete o
 
 Set in `.env`:
 
-| Install type | Settings file |
-|--------------|---------------|
-| Windows installer | `%APPDATA%\DataRoomOrganizer\.env` |
-| Zip / developer | Project root `.env` (copy from `.env.example`) |
+| Install type | Settings file | Cache |
+|--------------|---------------|-------|
+| Windows installer | `%APPDATA%\DataRoomOrganizer\.env` | `%APPDATA%\DataRoomOrganizer\cache\` |
+| Zip / developer | Project root `.env` (copy from `.env.example`) | Project / output folder per config |
 
 | Mode | Behavior |
 |------|----------|
@@ -207,9 +209,54 @@ Set in `.env`:
 | `hybrid` | Local first; LLM for ambiguous files (recommended) |
 | `api` | LLM-assisted when provider configured |
 
-Tier 3 providers: `auto`, `local`, `openai`, `ollama`, `enterprise`. See `README.md` for examples. For Ollama setup after install, see `docs/OLLAMA_SETUP.md`.
+Tier 3 providers: `auto`, `local`, `openai`, `ollama`, `enterprise`. See **Adding API keys** below. For Ollama (local, no key), see `docs/OLLAMA_SETUP.md`.
 
 KMZ and DWG files are always **local-only** — never sent to external APIs.
+
+---
+
+## Adding API keys (OpenAI or enterprise)
+
+**Not required** for default local mode. Add a key only if you want Tier 3 LLM escalation for ambiguous documents.
+
+### 1. Open the settings file
+
+**Installer:**
+
+```powershell
+notepad "$env:APPDATA\DataRoomOrganizer\.env"
+```
+
+**Developer:** edit project root `.env` (copy from `.env.example` if missing).
+
+### 2. OpenAI
+
+Get a key from [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys), then set:
+
+```env
+CLASSIFICATION_MODE=hybrid
+REASONING_PROVIDER=openai
+OPENAI_API_KEY=sk-your-key-here
+OPENAI_MODEL=gpt-4o-mini
+```
+
+### 3. Enterprise gateway (Azure OpenAI, vLLM, etc.)
+
+```env
+CLASSIFICATION_MODE=hybrid
+REASONING_PROVIDER=enterprise
+ENTERPRISE_API_KEY=your-api-key
+ENTERPRISE_BASE_URL=https://your-gateway.example.com/v1
+ENTERPRISE_MODEL=your-model-name
+```
+
+### 4. Apply changes
+
+1. Save `.env`
+2. Close and restart **Data Room Organizer**
+3. **Doctor** tab → confirm provider shows **OK**
+
+Only short excerpts go to cloud APIs — not full files. See `docs/INSTALLER_QUICKSTART.md` for full examples and `auto` provider mode.
 
 ---
 
@@ -221,7 +268,8 @@ KMZ and DWG files are always **local-only** — never sent to external APIs.
 | OCR not working | `dataroom doctor` — install Tesseract + Poppler; restart terminal |
 | Legacy `.doc` fails | Install LibreOffice; check doctor |
 | `rerun` says missing cache | Run full `dataroom run` first on that output folder |
-| UI shows subprocess error | Read the error message; fix paths or run `dataroom doctor` |
+| UI subprocess error | Read the error message; fix paths or run **Data Room Doctor** |
+| UI status stuck on "Starting…" | Upgrade to installer v0.5.3 or later |
 | Cannot save review queue | Close `review_queue.xlsx` in Excel or another editor, then retry |
 | Ollama not used | Start `ollama serve`; set `REASONING_PROVIDER=ollama` in `.env` — see `docs/OLLAMA_SETUP.md` |
 | Same file in/out of review queue | Tier 3 (Ollama) is non-deterministic for ambiguous docs — see `docs/CALIBRATION.md` |
@@ -252,4 +300,4 @@ dataroom ui
 - `docs/DEMO.md` — guided demo for stakeholders
 - `docs/TESTING.md` — QA / acceptance checklist
 - `docs/CALIBRATION.md` — tuning thresholds and taxonomy
-- `docs/MILESTONE_4.md` — milestone delivery summary
+- `docs/MILESTONE_5.md` — Windows installer delivery summary

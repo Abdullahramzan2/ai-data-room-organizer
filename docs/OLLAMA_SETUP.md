@@ -146,6 +146,6 @@ KMZ and DWG files remain **local-only** regardless of provider settings.
 
 ## Related documents
 
-- `docs/INSTALLER_QUICKSTART.md` — install the Windows setup file
+- `docs/INSTALLER_QUICKSTART.md` — install the Windows setup file; **OpenAI / enterprise API keys**
 - `docs/USER_GUIDE.md` — classification modes and daily workflow
 - `docs/CALIBRATION.md` — tune thresholds if Ollama results vary

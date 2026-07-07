@@ -1,10 +1,14 @@
 # QA / Acceptance Testing Guide
 
-Checklist for validating **v0.5.0** before delivery or after changes. Run on a Windows machine with the installer (`docs/INSTALLER_QUICKSTART.md`) or zip install (`README.md` → **Windows installation**).
+Checklist for validating **v0.5.3** before delivery or after changes. Run on a Windows machine with the installer (`docs/INSTALLER_QUICKSTART.md`) or zip install (`README.md` → **Windows installation**).
 
 ---
 
 ## Prerequisites
+
+**Installer:** Start Menu → **Data Room Doctor** — no FAIL items.
+
+**Developer:**
 
 ```powershell
 .venv\Scripts\activate
@@ -12,11 +16,15 @@ dataroom doctor
 dataroom download-models
 ```
 
-Doctor should show no **FAIL** items. Start Ollama if testing hybrid/LLM escalation (`ollama serve`).
+Start Ollama if testing hybrid/LLM escalation (`ollama serve`).
 
 ---
 
 ## 1. Full pipeline (CLI)
+
+**Installer:** use bundled Python from install dir, or run via UI.
+
+**Developer:**
 
 ```powershell
 dataroom run "C:\path\to\sample\folder" --output-dir output\qa_full
@@ -31,23 +39,23 @@ dataroom run "C:\path\to\sample\folder" --output-dir output\qa_full
 | Operational artifacts | Output root | `run_summary.json`, `processing_log.json`, `run_progress.json`, `ingestion_cache.json`, `classification_cache.json`, `audit_log.jsonl` |
 | Admin folder | No duplicate of `run_summary.json` | Summary exists only at output root |
 | Originals | Source folder unchanged |
+| 19-file sample timing | ~20–40 s | Local mode, OCR enabled |
 
 ---
 
 ## 2. Streamlit UI — Run tab
 
-```powershell
-dataroom ui
-```
+**Installer:** Start Menu → **Data Room Organizer**
+
+**Developer:** `dataroom ui`
 
 | Check | Expected |
 |-------|----------|
-| Sidebar | Input/output paths, Browse works |
-| Run pipeline | **Total files** after scan; per-file table updates live; review queue counter grows as files are flagged |
-| Completion | Final run summary metrics |
-| Errors | Short error message if subprocess fails |
-
-**Tip:** Stop the UI (`Ctrl+C`) before `pip install -e` — otherwise Windows may lock `dataroom.exe`.
+| Sidebar | Input/output paths, **Browse…** works |
+| Live status | Updates through *Ingesting…* → *Classifying…* → **Pipeline finished.** (not stuck on "Starting…") |
+| Progress | **Total files** after scan; per-file table updates live; review queue counter grows |
+| Completion | No red Streamlit error loop; final metrics visible |
+| Errors | Short error message only on real failure (not flash-then-disappear on success) |
 
 ---
 
@@ -59,68 +67,44 @@ Use a dedicated output folder per test for clear counts.
 
 | Check | Expected |
 |-------|----------|
-| Checkbox on | Organized copies use standardized names: `YYYY-MM-DD__CategoryShort__Source__ShortDesc__OriginalName.ext` (source/description omitted when unknown) |
+| Checkbox on | Organized copies use standardized names: `YYYY-MM-DD__CategoryShort__Source__ShortDesc__OriginalName.ext` |
 | Checkbox off | Original filenames preserved |
-| Email input | Date/from/subject taken from email headers when present |
-| Re-run same output | May add `_2`, `_3` suffixes if names collide |
 
 ### Disable OCR
 
 | Check | Expected |
 |-------|----------|
 | `--no-ocr` / checkbox | Faster ingestion; `manifest.xlsx` → `extraction_method` = `native` for text PDFs |
-| Classification | Still runs (Ollama/local tiers unchanged) |
 
 ### Non-recursive scan
 
-Use a folder with files in subfolders (e.g. Desktop `nonrecursive_test`):
-
 | Setting | Expected processed |
 |---------|-------------------|
-| Non-recursive **off** | All supported files in tree (e.g. 6) |
-| Non-recursive **on** | Top-level files only (e.g. 3) |
+| Non-recursive **off** | All supported files in tree |
+| Non-recursive **on** | Top-level files only |
 
 ---
 
 ## 4. Duplicate detection
 
-Use a folder with intentional duplicate pairs (same file copied, or identical content):
-
 | Check | Expected |
 |-------|----------|
 | `duplicate_pair_count` in summary | Matches pairs in input **batch** |
-| `duplicate_report.xlsx` in `00_Admin_and_Index/` | Lists exact (hash) and/or near-text pairs |
-| Organized output | Duplicates are **reported**, not removed |
-
-**Note:** Duplicates are detected **within a single run’s input batch**, not across unrelated folders or prior runs.
-
-### Duplicate → review queue
-
-| Check | Expected |
-|-------|----------|
-| `duplicates.flag_for_review: true` | Both files in a duplicate pair appear in `review_queue.xlsx` |
-| `review_reason` | Includes `Duplicate: exact duplicate` or `near duplicate` with partner filename |
-| `manifest.xlsx` | `duplicate_status`, `duplicate_partner_path`, `text_snippet`, `document_type` populated |
+| `duplicate_report.xlsx` | Lists exact (hash) and/or near-text pairs |
+| Review queue | Duplicate pairs flagged when `flag_for_review: true` |
 
 ---
 
 ## 5. Review queue and rerun
 
-1. Run pipeline on a folder that produces review-queue rows (medium/low confidence).
-2. Open UI → **Review** (or edit `00_Admin_and_Index/review_queue.xlsx`).
-3. Set **Corrected folder** for one or more rows.
-4. **Save review queue** (close CSV in Excel first if open).
-5. **Rerun with corrections**.
+1. Run pipeline on a folder that produces review-queue rows.
+2. UI → **Review** — set **Corrected folder**; **Save** → **Rerun with corrections**.
 
 | Check | Expected |
 |-------|----------|
 | Rerun time | Seconds (no re-OCR) |
-| `run_summary.json` | Output root | `"rerun": true`, `corrections_applied` > 0 |
-| `manifest.xlsx` | `00_Admin_and_Index/` | Corrected rows → `manual_correction`, `needs_review` false |
-| Review queue count | Drops for corrected rows |
-| New copies | Appear in corrected taxonomy folders |
-
-**Note:** Rerun adds new organized copies; it does not delete copies from earlier runs in other folders.
+| `run_summary.json` | `"rerun": true`, `corrections_applied` > 0 |
+| Manifest | Corrected rows updated |
 
 ---
 
@@ -130,18 +114,19 @@ Use a folder with intentional duplicate pairs (same file copied, or identical co
 |-----|-------|
 | **Taxonomy** | Categories 00–19 listed with keyword counts |
 | **Doctor** | Run doctor → formatted report; pass/fail banner |
-| **Outputs** | Run summary (expanded), manifest preview columns, processing log metrics, admin mirror file list (no `run_summary.json` in folder 00), artifact table, HTML index path |
+| **Outputs** | Run summary, manifest preview, processing log, artifact table |
 
 ---
 
-## 7. Doctor CLI
+## 7. Installer-specific checks (v0.5.3)
 
-```powershell
-dataroom doctor
-dataroom doctor --json
-```
-
-Verify embedding model, Tesseract, Poppler, and optional Ollama checks.
+| Check | Expected |
+|-------|----------|
+| Install path | `%LOCALAPPDATA%\Programs\AI Data Room Organizer\` |
+| Settings | `%APPDATA%\DataRoomOrganizer\.env` created on first launch |
+| Cache writes | `%APPDATA%\DataRoomOrganizer\cache\` — no Access Denied under Program Files |
+| Upgrade | New Setup.exe installs over old version without uninstall |
+| Setup.exe size | ~550–620 MB (not ~26 MB) |
 
 ---
 
@@ -152,16 +137,7 @@ pip install -e ".[ui,dev]"
 pytest -v
 ```
 
-Key unit suites for acceptance gaps:
-
-| Module | Covers |
-|--------|--------|
-| `tests/test_manifest_enrichment.py` | Manifest duplicate/snippet columns |
-| `tests/test_duplicate_review.py` | Duplicate pairs flagged for review |
-| `tests/test_classification_log.py` | Classification + processing logs |
-| `tests/test_admin_outputs.py` | Admin deliverables under `00_Admin_and_Index` (no `run_summary.json` copy) |
-| `tests/test_naming.py` | Standardized rename tokens |
-| `tests/test_html_index.py` | HTML snippet/duplicate/review filters |
+Key UI suite: `tests/test_ui_progress_display.py` — status message transitions.
 
 ---
 
@@ -169,16 +145,15 @@ Key unit suites for acceptance gaps:
 
 | Behavior | Explanation |
 |----------|-------------|
-| Ollama picks differ between runs | Tier 3 LLM is non-deterministic; edge-case files may move in/out of review queue |
-| Re-run on same output stacks `_2`, `_3` copies | Organizer avoids overwrite; use fresh output folder for clean demos |
-| `review_queue.xlsx` save fails | File open in Excel — close it and retry |
-| Full run always re-ingests | Caches used by **`dataroom rerun`**, not by full `dataroom run` |
-| UI stop slow after run | Streamlit waits for subprocess; second `Ctrl+C` or close terminal if stuck |
+| Ollama picks differ between runs | Tier 3 LLM is non-deterministic |
+| Re-run on same output stacks `_2`, `_3` copies | Organizer avoids overwrite |
+| `review_queue.xlsx` save fails | File open in Excel — close and retry |
+| Full run always re-ingests | Caches used by **`dataroom rerun`**, not full `dataroom run` |
 
 ---
 
 ## Related docs
 
 - `docs/USER_GUIDE.md` — operator workflow
-- `docs/DEMO.md` — stakeholder walkthrough
-- `docs/MILESTONE_4.md` — delivery summary
+- `docs/INSTALLER_QUICKSTART.md` — Carl installer guide
+- `docs/MILESTONE_5.md` — delivery summary

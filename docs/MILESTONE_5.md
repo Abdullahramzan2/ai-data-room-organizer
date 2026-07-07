@@ -4,7 +4,7 @@
 |---|---|
 | **Client** | Carl Quesinberry |
 | **Milestone** | Bundled Windows installer — no Python/pip/terminal setup |
-| **Version** | 0.5.0 (package + installer) |
+| **Version** | 0.5.3 (package + installer) |
 | **Status** | Delivered |
 
 ---
@@ -15,13 +15,24 @@ Carl requested a **single Windows installer** that bundles Python, libraries, Te
 
 ### Delivered
 
-1. **Windows installer** — `AI-Data-Room-Organizer-Setup.exe` (~602 MB compressed)
+1. **Windows installer** — `AI-Data-Room-Organizer-Setup.exe` (~603 MB compressed)
 2. **Launcher** — `DataRoomOrganizer.exe` (UI, no console) + `DataRoomDoctor.exe` (health check)
 3. **Bundled layout** — `app/`, `python/`, `tools/`, `models/`, `launcher/` under install dir
-4. **User settings** — `%APPDATA%\DataRoomOrganizer\.env` created on first launch
-5. **Start Menu shortcuts** — Data Room Organizer, Data Room Doctor; optional desktop icon
-6. **Operator docs** — `docs/INSTALLER_QUICKSTART.md`, `docs/OLLAMA_SETUP.md`, updated `docs/USER_GUIDE.md`
-7. **Build pipeline** — `packaging/build.ps1`, staging scripts, Inno Setup (`packaging/installer.iss`)
+4. **Per-user install** — `%LOCALAPPDATA%\Programs\AI Data Room Organizer\` (no admin required)
+5. **User settings & cache** — `%APPDATA%\DataRoomOrganizer\.env` and `cache\` on first launch
+6. **Start Menu shortcuts** — Data Room Organizer, Data Room Doctor; optional desktop icon
+7. **Operator docs** — bundled under `app\docs\` plus cloud delivery
+8. **Build pipeline** — `packaging/build.ps1`, staging scripts, Inno Setup (`packaging/installer.iss`)
+
+### v0.5.1–0.5.3 fixes (post-initial delivery)
+
+| Fix | Version |
+|-----|---------|
+| Batch classification default (`pipelined: false`) — fast 19-file runs | 0.5.1 |
+| User-writable cache (`%APPDATA%\DataRoomOrganizer\cache`) — no Program Files errors | 0.5.1 |
+| Per-user install path, desktop shortcut, browse-folder picker | 0.5.1 |
+| Live UI status messages (ingesting / classifying / finished) | 0.5.2 |
+| Streamlit fragment status fix — no error loop during pipeline run | 0.5.3 |
 
 ### Not bundled (by design)
 
@@ -30,26 +41,31 @@ Carl requested a **single Windows installer** that bundles Python, libraries, Te
 
 ---
 
-## Carl delivery file
+## Carl delivery package
 
-| File | Location | Size |
-|------|----------|------|
-| **Setup installer** | `packaging/dist/AI-Data-Room-Organizer-Setup.exe` | ~602 MB |
+Send Carl these files:
 
-Upload this single file to Google Drive, Dropbox, or OneDrive and share the link with Carl.
+| File | Purpose |
+|------|---------|
+| **`AI-Data-Room-Organizer-Setup.exe`** | Required — the installer (~603 MB) |
+| **`docs/INSTALLER_QUICKSTART.md`** | Required — install and first-run guide |
+| **`docs/USER_GUIDE.md`** | Recommended — daily workflow, review, rerun, API keys |
+| **`docs/OLLAMA_SETUP.md`** | Optional — local LLM without an API key |
+
+Upload Setup.exe + docs to Google Drive, Dropbox, or OneDrive and share the link.
 
 ---
 
-## Local smoke test results (2026-07-04)
+## Local smoke test results
 
-Validated from `AI-Data-Room-Organizer-Setup.exe` on Windows 11:
+Validated on Windows 11 with Carl's 19-file sample:
 
 | Test | Result |
 |------|--------|
-| Silent install to test directory | **Pass** (~6.5 min extract) |
-| `DataRoomDoctor.exe` | **Pass** — Python, Tesseract, Poppler, LibreOffice, embedding model all OK |
-| Pipeline run (3 sample `.txt` files, bundled tools/models) | **Pass** — 3 processed, 3 organized, manifest + index exported |
-| UI launch via bundled launcher | **Pass** — Streamlit HTTP 200 at `http://127.0.0.1:8501` |
+| Silent install to `%LOCALAPPDATA%\Programs\` | **Pass** |
+| `DataRoomDoctor.exe` | **Pass** — Python, Tesseract, Poppler, LibreOffice, embedding model OK |
+| Pipeline (19 files, bundled Python) | **Pass** — ~20–40 s, manifest + index exported |
+| UI launch + live progress | **Pass** — status updates through ingest/classify/finish; no error loop (v0.5.3) |
 
 Install docs ship inside the app at:
 
@@ -72,11 +88,17 @@ Full steps: `docs/INSTALLER_QUICKSTART.md`
 ## Rebuild commands (maintainer)
 
 ```powershell
-# Full staging + installer
-powershell -ExecutionPolicy Bypass -File packaging\build.ps1 -Version 0.5.0 -BuildInstaller
+# Stop running app
+powershell -ExecutionPolicy Bypass -File packaging\stop_dataroom.ps1
 
-# Installer only (staging already built)
-powershell -ExecutionPolicy Bypass -File packaging\build_installer.ps1 -Version 0.5.0
+# Stage updated app code only (fast)
+powershell -ExecutionPolicy Bypass -File packaging\stage_app.ps1
+
+# Build installer (staging must include python/, tools/, models/)
+powershell -ExecutionPolicy Bypass -File packaging\build_installer.ps1 -Version 0.5.3
+
+# Full rebuild from scratch (slow — downloads tools, venv, model)
+powershell -ExecutionPolicy Bypass -File packaging\build.ps1 -AllowWingetInstall -Version 0.5.3 -BuildInstaller
 ```
 
 ---
@@ -84,6 +106,6 @@ powershell -ExecutionPolicy Bypass -File packaging\build_installer.ps1 -Version 
 ## Related documents
 
 - `docs/INSTALLER_QUICKSTART.md` — Carl installer walkthrough
-- `docs/OLLAMA_SETUP.md` — optional Ollama configuration
 - `docs/USER_GUIDE.md` — day-to-day operator workflow
+- `docs/OLLAMA_SETUP.md` — optional Ollama configuration
 - `docs/MILESTONE_4.md` — prior milestone (operator UI + exports)

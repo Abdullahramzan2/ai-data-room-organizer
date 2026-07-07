@@ -2,21 +2,30 @@
 
 **Duration:** ~20 minutes  
 **Audience:** Carl Quesinberry / stakeholders  
-**Version:** 0.5.0  
+**Version:** 0.5.3  
 **Sample data:** 19-file real estate development set (or any folder with mixed PDFs, Office, KMZ)
 
 ---
 
 ## Before the demo
 
+**Windows installer (Carl):**
+
+1. Start Menu → **Data Room Doctor** — confirm all checks OK
+2. Start Menu → **Data Room Organizer**
+3. Have sample input folder path ready (e.g. `C:\Users\...\Desktop\Sample Data`)
+
+**Zip / developer install:**
+
 ```powershell
 cd "AI-Assisted Data Room File Organizer"
 .venv\Scripts\activate
 dataroom doctor
 dataroom download-models
+dataroom ui
 ```
 
-Confirm doctor shows no **fail** items. Have sample input folder path ready (e.g. `C:\Users\user\Desktop\Sample Data`).
+Confirm doctor shows no **fail** items.
 
 ---
 
@@ -24,9 +33,9 @@ Confirm doctor shows no **fail** items. Have sample input folder path ready (e.g
 
 **Say:** *"Before processing thousands of files, the tool validates the machine."*
 
-```powershell
-dataroom doctor
-```
+**Installer:** Start Menu → **Data Room Doctor** (or UI → **Doctor** tab → **Run doctor**)
+
+**Developer:** `dataroom doctor`
 
 **Point out:**
 
@@ -35,25 +44,13 @@ dataroom doctor
 - Embedding model loaded (Tier 2 classification)
 - Ollama reachable (if configured) for ambiguous documents
 
-**Optional — UI:**
-
-```powershell
-dataroom ui
-```
-
-Open **Doctor** tab → **Run doctor**.
-
 ---
 
 ## Part 2 — Taxonomy (2 min)
 
 **Say:** *"Folders 00–19 are defined in YAML — no code changes to adapt domains."*
 
-```powershell
-dataroom taxonomy
-```
-
-**Or UI → Taxonomy tab.**
+**UI → Taxonomy tab** (or `dataroom taxonomy` from developer install)
 
 **Highlight:** category ID, folder name, keyword count, review-queue flag for folder `19`.
 
@@ -61,17 +58,20 @@ dataroom taxonomy
 
 ## Part 3 — Full pipeline run (5–8 min)
 
-**Say:** *"One command ingests, classifies, organizes, and exports everything. Originals stay untouched."*
+**Say:** *"One click ingests, classifies, organizes, and exports everything. Originals stay untouched."*
+
+**UI → Run tab:**
+
+1. Set input/output via **Browse…**
+2. Click **Run pipeline**
+3. Show live status: *Ingesting…* → *Classifying…* → **Pipeline finished.**
+4. Show metrics and per-file table updating during the run
+
+**Developer CLI alternative:**
 
 ```powershell
 dataroom run "C:\Users\user\Desktop\Sample Data" --output-dir output\demo
 ```
-
-**Or UI → Run tab:**
-
-1. Set input/output via Browse
-2. Click **Run pipeline**
-3. Show **Run summary** metrics when complete (processed, review queue, duplicates, timings)
 
 **While waiting, explain:**
 
@@ -79,7 +79,7 @@ dataroom run "C:\Users\user\Desktop\Sample Data" --output-dir output\demo
 - KMZ/DWG never leave the machine
 - Batch embeddings speed up multi-file runs
 
-**Expected on 19-file sample:** ~3–5 minutes depending on OCR and LLM.
+**Expected on 19-file sample (local mode):** ~20–40 seconds.
 
 ---
 
@@ -89,33 +89,25 @@ Open `output\demo\00_Admin_and_Index\`:
 
 ### Manifest
 
-```powershell
-start output\demo\00_Admin_and_Index\manifest.xlsx
-```
+Open `manifest.xlsx` in Excel.
 
 **Show columns:** file name, assigned folder, confidence, method, reasoning provider, file hash.
 
 ### HTML index
 
-```powershell
-start output\demo\00_Admin_and_Index\index.html
-```
+Double-click `index.html`.
 
 **Demo:** search for a filename; filter by folder; click a link (opens original or organized copy per config).
 
 ### Review queue
 
-```powershell
-start output\demo\00_Admin_and_Index\review_queue.xlsx
-```
+Open `review_queue.xlsx`.
 
 **Say:** *"Only uncertain files appear here — not the whole batch."*
 
 ### Duplicates
 
-```powershell
-start output\demo\00_Admin_and_Index\duplicate_report.xlsx
-```
+Open `duplicate_report.xlsx`.
 
 **Say:** *"Exact hash matches and near-text duplicates are flagged for analyst review."*
 
@@ -123,13 +115,9 @@ start output\demo\00_Admin_and_Index\duplicate_report.xlsx
 
 Browse `output\demo\01_Project_Overview`, etc.
 
-**Optional KMZ story** (if sample includes boundary KMZ): show `manifest.xlsx` → `extracted_geo_signals` and keyword classification — see `docs/CALIBRATION.md` §4.
-
 ### Run summary (output root)
 
-```powershell
-type output\demo\run_summary.json
-```
+Open `run_summary.json` at the output root.
 
 **Say:** *"Operational summary stays at the output root — not duplicated in folder 00."*
 
@@ -145,12 +133,12 @@ type output\demo\run_summary.json
 2. Set **Corrected folder** on one flagged row
 3. **Save review queue** → **Rerun with corrections**
 
-**CLI path:**
+**CLI path (developer install):**
 
 1. Edit `00_Admin_and_Index/review_queue.xlsx` — set `corrected_folder`
 2. `dataroom rerun output\demo`
 
-**Show:** rerun completes in seconds; `run_summary.json` (output root) has `"rerun": true`; file appears in corrected folder.
+**Show:** rerun completes in seconds; `run_summary.json` has `"rerun": true`; file appears in corrected folder.
 
 ---
 
@@ -158,7 +146,11 @@ type output\demo\run_summary.json
 
 **Say:** *"Secrets in .env; policy in YAML."*
 
-Open `.env.example` — classification mode, Ollama, enterprise gateway.
+**Installer:** open `%APPDATA%\DataRoomOrganizer\.env` in Notepad.
+
+**Developer:** open `.env.example`.
+
+Show classification mode, Ollama, enterprise gateway options.
 
 Open `config/default.yaml` — thresholds, guardrails, duplicate settings, `index_link_mode`.
 
@@ -172,7 +164,7 @@ Open `config/default.yaml` — thresholds, guardrails, duplicate settings, `inde
 |-------|--------|
 | **Local-first** | Ingestion and Tier 2 run on-host; API sends excerpts only |
 | **Auditability** | `00_Admin_and_Index/manifest.xlsx`, `audit_log.jsonl`, `errors_report.xlsx` |
-| **Scale** | CLI for large batches; UI for review and ops |
+| **Scale** | UI for review and ops; full pipeline in one click |
 | **No lock-in** | Taxonomy YAML swappable; OpenAI-compatible enterprise gateway |
 
 ---
@@ -181,19 +173,18 @@ Open `config/default.yaml` — thresholds, guardrails, duplicate settings, `inde
 
 | Issue | Quick fix |
 |-------|-----------|
-| Doctor embedding fail | `dataroom download-models` |
-| Run slow | Normal on first OCR-heavy batch; mention cache on rerun |
-| UI subprocess error | Show CLI `dataroom run` as fallback; run `dataroom doctor` |
+| Doctor embedding fail | Re-run Doctor; reinstall if bundled model missing |
+| Run slow | First OCR-heavy batch may take longer; 19-file sample ~20–40 s in local mode |
+| UI error loop during run | Upgrade to v0.5.3+ |
 | Ollama not used | `CLASSIFICATION_MODE=hybrid` + `ollama serve` running |
 
 ---
 
 ## Post-demo handoff
 
-Share:
+Share with Carl:
 
+- `AI-Data-Room-Organizer-Setup.exe`
+- `docs/INSTALLER_QUICKSTART.md`
 - `docs/USER_GUIDE.md`
-- `README.md` — installation and command reference
-- `docs/TESTING.md`
-- `docs/MILESTONE_4.md`
-- `README.md`
+- `docs/OLLAMA_SETUP.md` (if hybrid LLM is desired)
