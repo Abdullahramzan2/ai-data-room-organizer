@@ -10,6 +10,13 @@ from dataroom.ui.launch_config import streamlit_argv
 
 
 def main() -> None:
+    from dataroom.bundled_launcher import activate_bundled_environment, apply_bundled_environment
+    from dataroom.paths import resolve_install_root
+
+    install = resolve_install_root()
+    if install is not None:
+        activate_bundled_environment(apply_bundled_environment(install))
+
     configure_streamlit_logging()
     try:
         import streamlit.web.cli as stcli

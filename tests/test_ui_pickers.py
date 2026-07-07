@@ -20,24 +20,23 @@ def test_resolve_initial_dir_uses_parent_for_file_path(tmp_path: Path):
     assert _resolve_initial_dir(file_path) == str(parent)
 
 
-@patch("tkinter.filedialog.askdirectory")
-@patch("tkinter.Tk")
-def test_browse_folder_returns_selected_path(mock_tk, mock_askdirectory, tmp_path: Path):
-    mock_root = MagicMock()
-    mock_tk.return_value = mock_root
-    mock_askdirectory.return_value = str(tmp_path)
+@patch("dataroom.ui.pickers.subprocess.run")
+def test_browse_folder_returns_selected_path(mock_run, tmp_path: Path):
+    mock_run.return_value = MagicMock(stdout=str(tmp_path) + "\n", returncode=0, stderr="")
 
     result = browse_folder(title="Pick")
 
     assert result == str(tmp_path.resolve())
-    mock_root.destroy.assert_called_once()
+    mock_run.assert_called_once()
 
 
-@patch("tkinter.filedialog.askdirectory")
-@patch("tkinter.Tk")
-def test_browse_folder_returns_none_when_cancelled(mock_tk, mock_askdirectory):
-    mock_root = MagicMock()
-    mock_tk.return_value = mock_root
-    mock_askdirectory.return_value = ""
+@patch("dataroom.ui.pickers.subprocess.run")
+def test_browse_folder_returns_none_when_cancelled(mock_run):
+    mock_run.return_value = MagicMock(stdout="", returncode=0, stderr="")
 
+    assert browse_folder() is None
+
+
+@patch("dataroom.ui.pickers.subprocess.run", side_effect=OSError("spawn failed"))
+def test_browse_folder_returns_none_on_subprocess_error(mock_run):
     assert browse_folder() is None

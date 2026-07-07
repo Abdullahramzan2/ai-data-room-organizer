@@ -122,6 +122,23 @@ def test_bundled_user_cache_dir(monkeypatch, tmp_path):
     assert default_cache_dir(config) == cache_dir
 
 
+def test_infer_install_root_without_env(monkeypatch, tmp_path):
+    import dataroom.paths as paths_mod
+
+    install = _stage_bundle(tmp_path)
+    (install / "launcher").mkdir()
+    monkeypatch.delenv("DATAROOM_HOME", raising=False)
+
+    fake_paths_file = install / "app" / "src" / "dataroom" / "paths.py"
+    fake_paths_file.parent.mkdir(parents=True, exist_ok=True)
+    fake_paths_file.write_text(Path(paths_mod.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.setattr(paths_mod, "__file__", str(fake_paths_file))
+
+    assert paths_mod.resolve_install_root() == install.resolve()
+    assert paths_mod.is_bundled() is True
+    assert paths_mod.uses_user_writable_storage() is True
+
+
 def test_dev_cache_dir_under_project_output(monkeypatch, tmp_path):
     monkeypatch.delenv("DATAROOM_HOME", raising=False)
     config = load_app_config()

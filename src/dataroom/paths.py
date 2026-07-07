@@ -6,20 +6,51 @@ import os
 from pathlib import Path
 
 
-def resolve_install_root() -> Path | None:
-    """Return installer root from ``DATAROOM_HOME`` when running a bundled install."""
-    home = os.environ.get("DATAROOM_HOME", "").strip()
-    if not home:
-        return None
-    path = Path(home)
-    if path.is_dir():
-        return path.resolve()
+def is_protected_path(path: Path) -> bool:
+    """True for locations normal users cannot write (e.g. Program Files)."""
+    lowered = str(path.resolve()).lower()
+    return "program files" in lowered or "program files (x86)" in lowered
+
+
+def _infer_bundled_install_root() -> Path | None:
+    """Detect install root from module location when ``DATAROOM_HOME`` is unset."""
+    module = Path(__file__).resolve()
+    for parent in module.parents:
+        if parent.name != "app":
+            continue
+        if not (parent / "config").is_dir():
+            continue
+        install = parent.parent
+        if (install / "python").is_dir() or (install / "launcher").is_dir():
+            return install.resolve()
     return None
 
 
+def resolve_install_root() -> Path | None:
+    """Return installer root from env or from the on-disk bundled layout."""
+    home = os.environ.get("DATAROOM_HOME", "").strip()
+    if home:
+        path = Path(home)
+        if path.is_dir():
+            return path.resolve()
+    return _infer_bundled_install_root()
+
+
 def is_bundled() -> bool:
-    """True when ``DATAROOM_HOME`` points at a bundled install directory."""
+    """True when running from a bundled install directory."""
     return resolve_install_root() is not None
+
+
+def uses_user_writable_storage() -> bool:
+    """True when config/cache/output must live outside the install folder."""
+    return is_bundled() or is_protected_path(resolve_app_root())
+
+
+def _appdata_config_dir() -> Path:
+    appdata = os.environ.get("APPDATA", "").strip()
+    if appdata:
+        return Path(appdata) / "DataRoomOrganizer"
+    return Path.home() / "DataRoomOrganizer"
 
 
 def resolve_dev_project_root() -> Path:
@@ -66,12 +97,9 @@ def resolve_models_dir() -> Path | None:
 
 def user_config_dir() -> Path:
     """Writable config directory (``%APPDATA%\\DataRoomOrganizer`` when bundled)."""
-    if is_bundled():
-        appdata = os.environ.get("APPDATA", "").strip()
-        if appdata:
-            return Path(appdata) / "DataRoomOrganizer"
-        return Path.home() / "DataRoomOrganizer"
-    return resolve_project_root()
+    if uses_user_writable_storage():
+        return _appdata_config_dir()
+    return resolve_dev_project_root()
 
 
 def user_cache_dir() -> Path:
@@ -119,7 +147,7 @@ def bundled_poppler_path() -> str | None:
 
 def default_output_dir() -> Path:
     """Writable default output folder for the active install mode."""
-    if is_bundled():
+    if uses_user_writable_storage():
         path = Path.home() / "Desktop" / "output"
         path.mkdir(parents=True, exist_ok=True)
         return path
@@ -128,7 +156,7 @@ def default_output_dir() -> Path:
 
 def default_input_dir() -> Path:
     """Default input folder hint for the active install mode."""
-    if is_bundled():
+    if uses_user_writable_storage():
         sample = Path.home() / "Desktop" / "Sample Data"
         if sample.is_dir():
             return sample

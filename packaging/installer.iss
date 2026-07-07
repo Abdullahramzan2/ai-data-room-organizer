@@ -56,7 +56,7 @@ Source: "{#StageDir}\BUILD_INFO.txt"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{group}\Data Room Organizer"; Filename: "{app}\launcher\{#MyAppExeName}"; WorkingDir: "{app}"
 Name: "{group}\Data Room Doctor"; Filename: "{app}\launcher\{#MyDoctorExeName}"; WorkingDir: "{app}"
-Name: "{commondesktop}\Data Room Organizer"; Filename: "{app}\launcher\{#MyAppExeName}"; Tasks: desktopicon; WorkingDir: "{app}"
+Name: "{userdesktop}\Data Room Organizer"; Filename: "{app}\launcher\{#MyAppExeName}"; Tasks: desktopicon; WorkingDir: "{app}"
 
 [Run]
 Filename: "{app}\launcher\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent

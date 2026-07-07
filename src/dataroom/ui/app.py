@@ -9,6 +9,7 @@ import streamlit as st
 
 from dataroom.config import load_app_config, load_taxonomy, resolve_project_root
 from dataroom.paths import default_input_dir, default_output_dir
+from dataroom.pipeline.progress import clear_run_progress
 from dataroom.export.review_queue import (
     REVIEW_COLUMNS,
     ReviewQueueWriteError,
@@ -164,9 +165,13 @@ def _page_run() -> None:
         if not input_path.is_dir():
             st.error(f"Input folder not found: {input_path}")
         else:
+            clear_run_progress(output_path, config)
             reset_live_progress_panel(output_path)
             get_run_status_slot()
             st.session_state.pop("_live_run_final_snapshot", None)
+            st.session_state.pop("_run_seen_progress", None)
+            st.session_state.pop("_run_status_message", None)
+            st.session_state.pop("run_page_error", None)
             st.session_state.pipeline_running = True
             st.session_state.pipeline_start_pending = True
             st.session_state.pipeline_run_options = {

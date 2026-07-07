@@ -215,12 +215,12 @@ def run_status_message(snapshot: dict[str, Any] | None, *, starting: bool = Fals
     if starting:
         return "Starting the pipeline…"
     if snapshot is None:
-        return ""
+        return "Pipeline is running…"
 
     status = str(snapshot.get("status", ""))
     files = snapshot.get("files") or []
     if status == "running":
-        return "Pipeline is running…" if files else "Starting the pipeline…"
+        return "Pipeline is running…"
     if status == "complete":
         return "Pipeline finished."
     if status == "failed":
@@ -506,10 +506,14 @@ def render_run_progress_poll_fragment(
 
         snapshot = load_pipeline_progress(output_path, config)
         if snapshot:
+            st.session_state["_run_seen_progress"] = True
             update_run_status(snapshot)
             render_live_run_dashboard(snapshot)
+        elif not st.session_state.get("_run_seen_progress"):
+            update_run_status(None, starting=True)
+            render_live_run_dashboard(None, starting=True)
         else:
-            update_run_status(None, starting=True, force=True)
+            update_run_status(None)
             render_live_run_dashboard(None, starting=True)
 
         job = get_active_pipeline_job()

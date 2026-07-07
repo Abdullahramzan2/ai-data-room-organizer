@@ -100,6 +100,14 @@ def default_progress_path(output_dir: Path, config: dict[str, Any] | None = None
     return output_dir / str(output_cfg.get("progress_file", "run_progress.json"))
 
 
+def clear_run_progress(output_dir: Path, config: dict[str, Any] | None = None) -> None:
+    """Remove stale progress snapshots before a new UI pipeline run."""
+    path = default_progress_path(output_dir, config)
+    if path.is_file():
+        path.unlink(missing_ok=True)
+    _cleanup_stale_progress_temps(output_dir)
+
+
 def load_run_progress(path: Path) -> dict[str, Any] | None:
     """Read the latest progress snapshot, or None if missing or invalid."""
     if not path.is_file():

@@ -427,13 +427,23 @@ class ClassificationEngine:
 
 
 def default_cache_dir(app_config: dict[str, Any]) -> Path:
-    from dataroom.paths import is_bundled, resolve_project_root, user_cache_dir
+    from dataroom.paths import (
+        is_protected_path,
+        resolve_dev_project_root,
+        user_cache_dir,
+        uses_user_writable_storage,
+    )
 
-    if is_bundled():
+    if uses_user_writable_storage():
         return user_cache_dir()
 
-    root = resolve_project_root()
+    root = resolve_dev_project_root()
     rel = app_config.get("paths", {}).get("cache_dir", "output/.cache")
-    cache = root / rel
-    cache.mkdir(parents=True, exist_ok=True)
+    cache = (root / rel).resolve()
+    if is_protected_path(cache):
+        return user_cache_dir()
+    try:
+        cache.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return user_cache_dir()
     return cache

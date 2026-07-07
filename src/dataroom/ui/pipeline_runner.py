@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import threading
@@ -47,6 +48,17 @@ class PipelineSubprocessError(RuntimeError):
         super().__init__(message)
         self.returncode = returncode
         self.log = log
+
+
+def _subprocess_env() -> dict[str, str]:
+    """Ensure bundled installs pass ``DATAROOM_HOME`` and tool paths to CLI children."""
+    from dataroom.bundled_launcher import apply_bundled_environment
+    from dataroom.paths import resolve_install_root
+
+    install = resolve_install_root()
+    if install is not None:
+        return apply_bundled_environment(install)
+    return os.environ.copy()
 
 
 def _cli_base() -> list[str]:
@@ -108,6 +120,7 @@ def _run_command(cmd: list[str]) -> tuple[int, str]:
         text=True,
         encoding="utf-8",
         errors="replace",
+        env=_subprocess_env(),
     )
     log_parts = []
     if completed.stdout:
@@ -156,6 +169,7 @@ def _execute_subprocess(
         text=True,
         encoding="utf-8",
         errors="replace",
+        env=_subprocess_env(),
     )
     _poll_progress(process, progress_path, on_progress=on_progress, poll_interval=poll_interval)
     stderr = process.stderr.read() if process.stderr is not None else ""
