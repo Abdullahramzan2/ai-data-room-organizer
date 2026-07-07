@@ -218,8 +218,30 @@ def run_status_message(snapshot: dict[str, Any] | None, *, starting: bool = Fals
         return "Pipeline is running…"
 
     status = str(snapshot.get("status", ""))
+    phase = str(snapshot.get("phase", ""))
     files = snapshot.get("files") or []
+    counts = summarize_file_progress(files, total=int(snapshot.get("total_files", 0)))
+    total = counts["total"]
+
     if status == "running":
+        if phase == "scanning" or (total == 0 and not files):
+            return "Scanning input folder…"
+        if phase == "model_ready":
+            return "Loading classification model…"
+        if phase == "ingesting":
+            return f"Ingesting files… {counts['ingested']} of {total}"
+        if phase == "classifying":
+            return f"Classifying files… {counts['classified']} of {total}"
+        if phase == "duplicates":
+            return "Detecting duplicates…"
+        if phase == "organizing":
+            return "Organizing files…"
+        if phase == "exporting":
+            return "Exporting results…"
+        if total > 0 and counts["ingested"] < total:
+            return f"Ingesting files… {counts['ingested']} of {total}"
+        if total > 0 and counts["classified"] < total:
+            return f"Classifying files… {counts['classified']} of {total}"
         return "Pipeline is running…"
     if status == "complete":
         return "Pipeline finished."
@@ -234,24 +256,54 @@ def update_run_status(
     starting: bool = False,
     force: bool = False,
 ) -> None:
-    """Update the single status line below the Run button."""
-    message = run_status_message(snapshot, starting=starting)
+    """Update the status line below the Run button (main page only, not inside fragments)."""
+    message = _remember_run_status(snapshot, starting=starting, force=force)
     if not message:
         return
-    if not force and message == st.session_state.get("_run_status_message"):
-        return
+    _paint_run_status(message)
 
+
+def _remember_run_status(
+    snapshot: dict[str, Any] | None,
+    *,
+    starting: bool = False,
+    force: bool = False,
+) -> str:
+    message = run_status_message(snapshot, starting=starting)
+    if not message:
+        return ""
+    if not force and message == st.session_state.get("_run_status_message"):
+        return message
     st.session_state["_run_status_message"] = message
     st.session_state["_run_status_is_error"] = (
         snapshot is not None and str(snapshot.get("status", "")) == "failed"
     )
-    _paint_run_status(message)
+    return message
 
 
 def _paint_run_status(message: str) -> None:
-    slot = st.session_state.get("_run_status_slot")
-    if slot is None:
+    target = st.session_state.get("_run_status_slot")
+    if target is None:
         return
+    if message == "Pipeline finished.":
+        target.success(message)
+    elif st.session_state.get("_run_status_is_error"):
+        target.error(message)
+    else:
+        target.info(message)
+
+
+def _render_fragment_status(
+    snapshot: dict[str, Any] | None,
+    *,
+    starting: bool = False,
+    force: bool = False,
+) -> None:
+    """Render the live status alert inside the poll fragment (never uses outside placeholders)."""
+    message = _remember_run_status(snapshot, starting=starting, force=force)
+    if not message:
+        return
+    slot = st.empty()
     if message == "Pipeline finished.":
         slot.success(message)
     elif st.session_state.get("_run_status_is_error"):
@@ -507,13 +559,13 @@ def render_run_progress_poll_fragment(
         snapshot = load_pipeline_progress(output_path, config)
         if snapshot:
             st.session_state["_run_seen_progress"] = True
-            update_run_status(snapshot)
+            _render_fragment_status(snapshot)
             render_live_run_dashboard(snapshot)
         elif not st.session_state.get("_run_seen_progress"):
-            update_run_status(None, starting=True)
+            _render_fragment_status(None, starting=True)
             render_live_run_dashboard(None, starting=True)
         else:
-            update_run_status(None)
+            _render_fragment_status(None)
             render_live_run_dashboard(None, starting=True)
 
         job = get_active_pipeline_job()
@@ -522,18 +574,32 @@ def render_run_progress_poll_fragment(
 
         final_progress = None
         try:
-            if job.error is not None:
+            if job.result is not None:
+                st.session_state.pop("run_page_error", None)
+                _render_fragment_status({"status": "complete"}, force=True)
+                final_progress = load_pipeline_progress(output_path, config)
+                if final_progress:
+                    render_live_run_dashboard(final_progress)
+            elif job.error is not None:
                 if isinstance(job.error, PipelineSubprocessError):
                     st.session_state["run_page_error"] = str(job.error)
                 else:
                     st.session_state["run_page_error"] = f"Pipeline failed: {job.error}"
+                final_progress = load_pipeline_progress(output_path, config)
+                if final_progress and str(final_progress.get("status", "")) == "failed":
+                    _render_fragment_status(final_progress, force=True)
+                    render_live_run_dashboard(final_progress)
+                else:
+                    _render_fragment_status(
+                        {"status": "failed", "error": str(job.error)},
+                        force=True,
+                    )
             else:
                 st.session_state.pop("run_page_error", None)
-
-            final_progress = load_pipeline_progress(output_path, config)
-            if final_progress:
-                update_run_status(final_progress, force=True)
-                render_live_run_dashboard(final_progress)
+                final_progress = load_pipeline_progress(output_path, config)
+                if final_progress:
+                    _render_fragment_status(final_progress, force=True)
+                    render_live_run_dashboard(final_progress)
         finally:
             clear_active_pipeline_job()
             st.session_state.pipeline_running = False

@@ -3,7 +3,7 @@
 ; Requires packaging\staging from packaging\build.ps1
 
 #ifndef AppVersion
-  #define AppVersion "0.5.0"
+  #define AppVersion "0.5.3"
 #endif
 
 #define MyAppName "AI Data Room Organizer"

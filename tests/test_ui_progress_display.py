@@ -46,8 +46,15 @@ def test_duplicate_table_rows_uses_basenames():
 def test_run_status_message_transitions():
     assert run_status_message(None, starting=True) == "Starting the pipeline…"
     assert run_status_message(None) == "Pipeline is running…"
-    assert run_status_message({"status": "running", "files": []}) == "Pipeline is running…"
-    assert run_status_message({"status": "running", "files": [{"file_name": "a.txt"}]}) == "Pipeline is running…"
+    assert run_status_message({"status": "running", "phase": "classifying", "total_files": 3, "files": [
+        {"status": "done", "category_folder": "01_Project_Overview"},
+        {"status": "ingested"},
+        {"status": "ingested"},
+    ]}) == "Classifying files… 1 of 3"
+    assert run_status_message({"status": "running", "phase": "ingesting", "total_files": 2, "files": [
+        {"status": "ingested"},
+        {"status": "ingesting"},
+    ]}) == "Ingesting files… 1 of 2"
     assert run_status_message({"status": "complete"}) == "Pipeline finished."
 
 

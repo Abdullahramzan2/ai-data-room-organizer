@@ -152,14 +152,37 @@ def _page_run() -> None:
         disabled=st.session_state.pipeline_running,
     )
 
-    get_run_status_slot()
     if st.session_state.pipeline_running:
-        if not st.session_state.get("_run_status_message"):
-            update_run_status(None, starting=True, force=True)
-        else:
-            repaint_run_status()
+        if st.session_state.get("pipeline_start_pending"):
+            st.session_state.pipeline_start_pending = False
+            opts = st.session_state.get("pipeline_run_options", {})
+            from dataroom.ui.pipeline_runner import start_pipeline_job
+
+            start_pipeline_job(
+                input_path,
+                output_path,
+                config_path=config_path,
+                rename=bool(opts.get("rename")),
+                no_ocr=bool(opts.get("no_ocr")),
+                no_recursive=bool(opts.get("no_recursive")),
+            )
+            st.session_state["_run_status_message"] = "Starting the pipeline…"
+            st.session_state["_run_status_is_error"] = False
+
+        render_run_progress_poll_fragment(output_path, config)
     else:
+        get_run_status_slot()
         repaint_run_status()
+
+        panel = get_live_progress_panel(output_path)
+        progress = st.session_state.get("_live_run_final_snapshot")
+        if progress is None:
+            progress = load_pipeline_progress(output_path, config)
+        if progress:
+            terminal = str(progress.get("status", "")) in {"complete", "failed"}
+            if terminal or not st.session_state.get("_run_status_message"):
+                update_run_status(progress, force=True)
+            panel.update(progress, force=True)
 
     if run_clicked and not st.session_state.pipeline_running:
         if not input_path.is_dir():
@@ -167,7 +190,6 @@ def _page_run() -> None:
         else:
             clear_run_progress(output_path, config)
             reset_live_progress_panel(output_path)
-            get_run_status_slot()
             st.session_state.pop("_live_run_final_snapshot", None)
             st.session_state.pop("_run_seen_progress", None)
             st.session_state.pop("_run_status_message", None)
@@ -179,37 +201,9 @@ def _page_run() -> None:
                 "no_ocr": no_ocr,
                 "no_recursive": no_recursive,
             }
-            update_run_status(None, starting=True, force=True)
             st.rerun()
 
-    if st.session_state.get("pipeline_start_pending"):
-        st.session_state.pipeline_start_pending = False
-        opts = st.session_state.get("pipeline_run_options", {})
-        from dataroom.ui.pipeline_runner import start_pipeline_job
-
-        start_pipeline_job(
-            input_path,
-            output_path,
-            config_path=config_path,
-            rename=bool(opts.get("rename")),
-            no_ocr=bool(opts.get("no_ocr")),
-            no_recursive=bool(opts.get("no_recursive")),
-        )
-        update_run_status(None, starting=True, force=True)
-
-    render_run_progress_poll_fragment(output_path, config)
-
-    if not st.session_state.pipeline_running:
-        panel = get_live_progress_panel(output_path)
-        progress = st.session_state.get("_live_run_final_snapshot")
-        if progress is None:
-            progress = load_pipeline_progress(output_path, config)
-        if progress:
-            if not st.session_state.get("_run_status_message"):
-                update_run_status(progress, force=True)
-            panel.update(progress, force=True)
-
-    if st.session_state.get("run_page_error"):
+    if st.session_state.get("run_page_error") and load_run_summary(output_path) is None:
         st.error(st.session_state["run_page_error"])
 
 
