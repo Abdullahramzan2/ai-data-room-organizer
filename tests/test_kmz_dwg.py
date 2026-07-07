@@ -128,12 +128,12 @@ def test_parse_gpx_content():
 
 def test_dwg_extractor_uses_sibling_dxf(tmp_path):
     pytest.importorskip("ezdxf")
-    import ezdxf
+    from ezdxf.filemanagement import new
 
     dwg = tmp_path / "site_plan.dwg"
     dwg.write_bytes(b"AC1032 fake")
     dxf_path = tmp_path / "site_plan.dxf"
-    doc = ezdxf.new()
+    doc = new()
     msp = doc.modelspace()
     msp.add_text("SITE PLAN TITLE", dxfattribs={"layer": "TITLE"})
     doc.saveas(dxf_path)

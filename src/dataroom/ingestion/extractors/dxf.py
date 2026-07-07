@@ -18,7 +18,9 @@ def extract_dxf_text(path: Path, *, max_chars: int) -> tuple[str, list[str], str
     signals: list[str] = []
 
     try:
-        doc = ezdxf.readfile(str(path))
+        from ezdxf.filemanagement import readfile
+
+        doc = readfile(str(path))
     except Exception as exc:
         return "", [], f"failed: {exc}"
 

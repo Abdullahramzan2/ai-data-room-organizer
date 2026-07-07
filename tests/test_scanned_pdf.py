@@ -57,8 +57,9 @@ def test_ocr_pdf_uses_first_and_last_page(monkeypatch: pytest.MonkeyPatch, tmp_p
         )
     )
     ocr._available = True
-    ocr._pytesseract = MagicMock()
-    ocr._pytesseract.image_to_string.return_value = "resolution covenants"
+    mock_pytesseract = MagicMock()
+    mock_pytesseract.image_to_string.return_value = "resolution covenants"
+    monkeypatch.setattr(ocr, "_pytesseract", mock_pytesseract)
 
     text, total = ocr.ocr_pdf_for_classification(pdf_path)
 

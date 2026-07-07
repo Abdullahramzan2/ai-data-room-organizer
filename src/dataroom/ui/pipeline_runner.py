@@ -131,7 +131,7 @@ def _run_command(cmd: list[str]) -> tuple[int, str]:
 
 
 def _poll_progress(
-    process: subprocess.Popen[bytes],
+    process: subprocess.Popen[str],
     progress_path: Path,
     *,
     on_progress: ProgressCallback | None,

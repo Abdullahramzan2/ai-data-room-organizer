@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 import os
 import tempfile
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Sequence
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
@@ -21,7 +21,7 @@ def cell_str(value: object) -> str:
     return str(value)
 
 
-def normalize_rows(rows: list[dict[str, object]], columns: Sequence[str]) -> list[dict[str, str]]:
+def normalize_rows(rows: Sequence[Mapping[str, object]], columns: Sequence[str]) -> list[dict[str, str]]:
     return [{col: cell_str(row.get(col)) for col in columns} for row in rows]
 
 
@@ -50,7 +50,7 @@ def _populate_sheet(ws: Worksheet, columns: Sequence[str], rows: list[dict[str, 
 def write_table_xlsx(
     path: Path,
     columns: Sequence[str],
-    rows: list[dict[str, str | object]],
+    rows: Sequence[Mapping[str, object]],
     *,
     sheet_title: str = "Sheet1",
 ) -> None:
@@ -69,7 +69,7 @@ def write_table_xlsx(
 def write_table_xlsx_atomic(
     path: Path,
     columns: Sequence[str],
-    rows: list[dict[str, str | object]],
+    rows: Sequence[Mapping[str, object]],
     *,
     sheet_title: str = "Sheet1",
 ) -> None:

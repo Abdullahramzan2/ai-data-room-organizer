@@ -34,7 +34,9 @@ def test_review_queue_includes_corrected_folder_column(tmp_path: Path):
     review_path = output_dir / ADMIN / "review_queue.xlsx"
     wb = load_workbook(review_path, read_only=True)
     try:
-        header = [str(c or "") for c in next(wb.active.iter_rows(values_only=True))]
+        ws = wb.active
+        assert ws is not None
+        header = [str(c or "") for c in next(ws.iter_rows(values_only=True))]
     finally:
         wb.close()
     assert header == REVIEW_COLUMNS
@@ -87,18 +89,17 @@ def test_run_rerun_applies_review_queue_correction(tmp_path: Path):
     assert run_summary["rerun"] is True
 
 
-@patch("dataroom.pipeline.run.run_ingestion")
-def test_run_rerun_does_not_reingest(mock_ingest, tmp_path: Path):
+def test_run_rerun_does_not_reingest(tmp_path: Path):
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     source = input_dir / "doc.txt"
     source.write_text("purchase and sale agreement", encoding="utf-8")
     output_dir = tmp_path / "out"
     run_pipeline(input_dir, output_dir, no_ocr=True)
-    mock_ingest.reset_mock()
 
-    run_rerun(output_dir)
-    mock_ingest.assert_not_called()
+    with patch("dataroom.pipeline.run.run_ingestion_from_files") as mock_ingest:
+        run_rerun(output_dir)
+        mock_ingest.assert_not_called()
 
 
 def test_run_rerun_missing_cache_raises(tmp_path: Path):

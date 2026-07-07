@@ -62,6 +62,7 @@ def run_pipelined_ingest_and_classify(
             try:
                 if item is _SENTINEL:
                     break
+                assert isinstance(item, tuple)
                 index, path = item
                 if on_ingest_progress:
                     on_ingest_progress(index, total, path)
@@ -93,6 +94,7 @@ def run_pipelined_ingest_and_classify(
             try:
                 if item is _SENTINEL:
                     break
+                assert isinstance(item, tuple)
                 index, doc_dict = item
                 document = document_from_row(doc_dict)
                 path = document.metadata.source_path

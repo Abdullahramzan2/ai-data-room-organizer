@@ -118,15 +118,20 @@ def resolve_install_root_from_launcher(
             )
         return path.resolve()
 
+    executable = Path(launcher_path or sys.executable).resolve()
+    if is_frozen_launcher():
+        executable = Path(sys.executable).resolve()
+
+    if launcher_path is not None:
+        found = find_install_root_near(executable)
+        if found is not None:
+            return found
+
     home = os.environ.get("DATAROOM_HOME", "").strip()
     if home:
         path = Path(home)
         if path.is_dir():
             return path.resolve()
-
-    executable = Path(launcher_path or sys.executable).resolve()
-    if is_frozen_launcher():
-        executable = Path(sys.executable).resolve()
 
     found = find_install_root_near(executable)
     if found is not None:
@@ -321,7 +326,15 @@ def _shutdown_managed_child(proc: subprocess.Popen[bytes]) -> None:
 
 def run_managed_subprocess(argv: list[str], *, env: dict[str, str], cwd: str) -> int:
     """Run a child process and shut it down cleanly on Ctrl+C."""
-    proc = subprocess.Popen(argv, env=env, cwd=cwd, **_windows_popen_kwargs())
+    if sys.platform == "win32":
+        proc = subprocess.Popen(
+            argv,
+            env=env,
+            cwd=cwd,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+        )
+    else:
+        proc = subprocess.Popen(argv, env=env, cwd=cwd)
     try:
         while proc.poll() is None:
             try:

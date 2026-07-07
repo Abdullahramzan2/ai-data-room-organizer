@@ -53,7 +53,7 @@ Validated from `AI-Data-Room-Organizer-Setup.exe` on Windows 11:
 
 Install docs ship inside the app at:
 
-`C:\Program Files\AI Data Room Organizer\app\docs\`
+`%LOCALAPPDATA%\Programs\AI Data Room Organizer\app\docs\`
 
 ---
 

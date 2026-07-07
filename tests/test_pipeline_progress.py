@@ -168,7 +168,7 @@ def test_run_pipeline_progress_on_failure(tmp_path: Path):
     input_dir.mkdir()
     output_dir = tmp_path / "out"
 
-    with patch("dataroom.pipeline.run.run_ingestion", side_effect=RuntimeError("boom")):
+    with patch("dataroom.pipeline.run.run_ingestion_from_files", side_effect=RuntimeError("boom")):
         try:
             run_pipeline(input_dir, output_dir, no_ocr=True)
         except RuntimeError:

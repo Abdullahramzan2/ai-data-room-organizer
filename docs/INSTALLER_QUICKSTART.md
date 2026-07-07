@@ -24,23 +24,22 @@ One setup file that installs everything:
 1. Download `AI-Data-Room-Organizer-Setup.exe` from the shared cloud folder (~600 MB).
 2. Double-click the file.
 3. If Windows SmartScreen appears, choose **More info** → **Run anyway** (unsigned installer).
-4. Accept the UAC prompt (admin rights required).
-5. Use the default install location unless IT requires another drive:
+4. Accept the installer prompts (no admin required for the default per-user install path):
 
-   `C:\Program Files\AI Data Room Organizer\`
+   `%LOCALAPPDATA%\Programs\AI Data Room Organizer\`
 
    Do **not** install into the project `packaging\` folder — that path is for developer testing only.
 
-6. Before upgrading or reinstalling, close the UI and run:
+5. Before upgrading or reinstalling, close the UI and run:
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File packaging\stop_dataroom.ps1
    ```
 
-   (Or close **Data Room Organizer** from Task Manager and wait a few seconds.)
+   Or close **Data Room Organizer** from Task Manager and wait a few seconds.
 
-7. Optionally check **Create a desktop icon**.
-8. Click **Install** and wait for extraction to finish (several minutes).
+6. Optionally check **Create a desktop icon** (shortcut goes to your personal desktop).
+7. Click **Install** and wait for extraction to finish (several minutes).
 
 ### 2. Launch the app
 
@@ -111,7 +110,7 @@ User settings in `%APPDATA%\DataRoomOrganizer\` are kept unless you delete that 
 
 | Issue | Fix |
 |-------|-----|
-| Setup "Access is denied" during install | Close the UI; run `packaging\stop_dataroom.ps1`; uninstall the old copy; reinstall to **Program Files** (not `packaging\test-install`) |
+| Setup "Access is denied" during install | Uncheck desktop icon and retry, or use the latest installer (desktop shortcut uses your personal desktop, not Public Desktop). Close the UI; run `packaging\stop_dataroom.ps1`; uninstall any partial copy; reinstall. |
 | Doctor window closes instantly | Install may be incomplete — uninstall, stop processes, reinstall; Doctor now waits for **Press Enter** after the report |
 | Ctrl+C hangs on "Stopping..." | Close the console window, or Task Manager → end `python.exe` for Data Room Organizer; rebuild launchers for faster stop |
 | Setup blocked by antivirus | Allow the file; re-download if quarantined |

@@ -38,8 +38,10 @@ class PdfExtractor(BaseExtractor):
             with fitz.open(path) as pdf:
                 doc.metadata.page_count = pdf.page_count
                 doc.text_content, truncated = extract_pdf_native_text(pdf, self.max_text_chars)
+                pdf_doc_metadata = pdf.metadata or {}
                 pdf_meta = {
-                    key: pdf.metadata.get(key) for key in ("title", "author", "subject", "creator", "producer")
+                    key: pdf_doc_metadata.get(key)
+                    for key in ("title", "author", "subject", "creator", "producer")
                 }
         except Exception as exc:
             doc.errors.append(f"PDF native extraction failed: {exc}")

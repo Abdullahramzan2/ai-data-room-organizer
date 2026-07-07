@@ -79,7 +79,7 @@ def test_read_docx_text_stops_early(tmp_path: Path):
     document = Document()
     for index in range(200):
         document.add_paragraph(f"Paragraph {index} " + ("content " * 20))
-    document.save(path)
+    document.save(str(path))
 
     text, truncated = read_docx_text(path, max_chars=5_000)
     assert len(text) <= 5_000

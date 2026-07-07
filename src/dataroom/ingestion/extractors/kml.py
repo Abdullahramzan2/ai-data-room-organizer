@@ -6,7 +6,7 @@ from pathlib import Path
 
 from dataroom.ingestion.extractors.base import BaseExtractor
 from dataroom.ingestion.extractors.kmz import extract_kml_bytes
-from dataroom.ingestion.models import ExtractedDocument, FileMetadata
+from dataroom.ingestion.models import ExtractedDocument, ExtractionMethod, FileMetadata
 
 
 class KmlExtractor(BaseExtractor):

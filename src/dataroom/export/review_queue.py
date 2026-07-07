@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 DEFAULT_REVIEW_FOLDER = "19_Unclassified_Review_Queue"
@@ -108,7 +109,7 @@ def read_review_queue(path: Path) -> list[dict[str, str]]:
 
 def write_review_queue_rows(
     path: Path,
-    rows: list[dict[str, object]],
+    rows: Sequence[Mapping[str, object]],
     *,
     retries: int = 5,
 ) -> None:
