@@ -6,8 +6,8 @@ Local tool to ingest, classify, and organize large document batches into a data-
 
 | Document | Purpose |
 |----------|---------|
-| `docs/INSTALLER_QUICKSTART.md` | **Carl delivery** — Windows installer (send with Setup.exe) |
-| `docs/USER_GUIDE.md` | Day-to-day operator workflow (recommended for Carl) |
+| `docs/INSTALLER_QUICKSTART.md` | Windows installer (send with Setup.exe) |
+| `docs/USER_GUIDE.md` | Day-to-day operator workflow |
 | `README.md` | Zip/developer install, command reference (below) |
 | `docs/OLLAMA_SETUP.md` | Optional Ollama configuration |
 | `docs/DEMO.md` | Stakeholder demo script |
@@ -233,7 +233,7 @@ dataroom download-models
 
 ### Pipeline output
 
-Taxonomy subfolders `01`–`19` for organized document copies, plus **`00_Admin_and_Index/`** for Carl deliverables:
+Taxonomy subfolders `01`–`19` for organized document copies, plus **`00_Admin_and_Index/`**:
 
 | Location | Files |
 |----------|--------|
